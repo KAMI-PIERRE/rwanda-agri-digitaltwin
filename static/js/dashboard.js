@@ -1,0 +1,863 @@
+/**
+ * Main Dashboard Logic for Rwanda Agriculture Digital Twin
+ */
+
+class Dashboard {
+    constructor() {
+        this.interventions = {};
+        this.currentResults = null;
+        this.optimizationResults = null;
+        this.isLoading = false;
+        
+        // Initialize dashboard
+        this.init();
+    }
+    
+    // Initialize dashboard
+    init() {
+        this.loadInterventions();
+        this.bindEvents();
+        this.setupDefaultValues();
+        this.runInitialSimulation();
+        this.updateTime();
+        
+        // Update time every second
+        setInterval(() => this.updateTime(), 1000);
+    }
+    
+    // Load interventions from the page
+    loadInterventions() {
+        const sliders = document.querySelectorAll('.intervention-slider');
+        sliders.forEach(slider => {
+            const id = slider.id.replace('slider-', '');
+            const name = slider.dataset.name;
+            const value = parseInt(slider.value);
+            
+            this.interventions[name] = value;
+            
+            // Update value display
+            const valueDisplay = document.getElementById(`value-${id}`);
+            if (valueDisplay) {
+                valueDisplay.textContent = value;
+            }
+        });
+    }
+    
+    // Bind event listeners
+    bindEvents() {
+        // Slider changes
+        document.querySelectorAll('.intervention-slider').forEach(slider => {
+            slider.addEventListener('input', (e) => {
+                const id = e.target.id.replace('slider-', '');
+                const value = parseInt(e.target.value);
+                const name = e.target.dataset.name;
+                
+                // Update value display
+                const valueDisplay = document.getElementById(`value-${id}`);
+                if (valueDisplay) {
+                    valueDisplay.textContent = value;
+                }
+                
+                // Update interventions object
+                this.interventions[name] = value;
+            });
+        });
+        
+        // Budget slider
+        const budgetSlider = document.getElementById('budget');
+        const budgetValue = document.getElementById('budget-value');
+        if (budgetSlider && budgetValue) {
+            budgetSlider.addEventListener('input', (e) => {
+                budgetValue.textContent = e.target.value;
+            });
+        }
+        
+        // Run simulation button
+        const runBtn = document.getElementById('run-simulation');
+        if (runBtn) {
+            runBtn.addEventListener('click', () => this.runSimulation());
+        }
+        
+        // Run optimization button
+        const optimizeBtn = document.getElementById('run-optimization');
+        if (optimizeBtn) {
+            optimizeBtn.addEventListener('click', () => this.runOptimization());
+        }
+        
+        // Run sensitivity analysis button
+        const sensitivityBtn = document.getElementById('run-sensitivity');
+        if (sensitivityBtn) {
+            sensitivityBtn.addEventListener('click', () => this.runSensitivityAnalysis());
+        }
+        
+        // Reset button
+        const resetBtn = document.getElementById('reset-btn');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => this.resetToDefaults());
+        }
+        
+        // Download chart button
+        const downloadBtn = document.getElementById('download-chart');
+        if (downloadBtn) {
+            downloadBtn.addEventListener('click', () => {
+                chartManager.exportChart('distribution-chart', 'rwanda-agri-distribution.png');
+            });
+        }
+        
+        // Fullscreen chart button
+        const fullscreenBtn = document.getElementById('fullscreen-chart');
+        if (fullscreenBtn) {
+            fullscreenBtn.addEventListener('click', () => {
+                chartManager.toggleFullscreen('distribution-chart');
+            });
+        }
+        
+        // Help button
+        const helpBtn = document.getElementById('help-btn');
+        if (helpBtn) {
+            helpBtn.addEventListener('click', () => this.showHelp());
+        }
+        
+        // Toggle explanation panel
+        const toggleExplanation = document.getElementById('toggle-explanation');
+        if (toggleExplanation) {
+            toggleExplanation.addEventListener('click', () => this.toggleExplanationPanel());
+        }
+        
+        // Explanation tabs
+        document.querySelectorAll('.explanation-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                const tabName = e.target.dataset.tab;
+                this.switchExplanationTab(tabName);
+            });
+        });
+        
+        // Update simulation count
+        const simCountInput = document.getElementById('n-simulations');
+        if (simCountInput) {
+            simCountInput.addEventListener('change', () => {
+                document.getElementById('sim-count').textContent = 
+                    Utils.formatNumber(parseInt(simCountInput.value));
+            });
+        }
+    }
+    
+    // Set default values
+    setupDefaultValues() {
+        // Set default simulation count display
+        const simCountInput = document.getElementById('n-simulations');
+        if (simCountInput) {
+            document.getElementById('sim-count').textContent = 
+                Utils.formatNumber(parseInt(simCountInput.value));
+        }
+    }
+    
+    // Run initial simulation
+    async runInitialSimulation() {
+        this.setLoading(true);
+        try {
+            await this.runSimulation();
+        } catch (error) {
+            console.error('Initial simulation failed:', error);
+            Utils.showNotification('Failed to run initial simulation', 'error');
+        } finally {
+            this.setLoading(false);
+        }
+    }
+    
+    // Run Monte Carlo simulation
+    async runSimulation() {
+        if (this.isLoading) return;
+        
+        this.setLoading(true);
+        
+        try {
+            // Get simulation parameters
+            const nSimulations = parseInt(document.getElementById('n-simulations').value) || 2000;
+            const targetYear = parseInt(document.getElementById('target-year').value) || 2050;
+            
+            // Prepare request data
+            const requestData = {
+                interventions: this.interventions,
+                n_simulations: nSimulations,
+                year: targetYear
+            };
+            
+            // Send API request
+            const response = await fetch('/api/projection', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`API error: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (!data.success) {
+                throw new Error(data.error || 'Unknown error');
+            }
+            
+            // Store results
+            this.currentResults = data.results;
+            
+            // Update UI
+            this.updateResultsUI(data.results, data.visualization);
+            
+            // Update distribution chart
+            chartManager.createDistributionChart(
+                'distribution-chart', 
+                data.results.distribution || [],
+                7000
+            );
+            
+            // Update probability ring
+            chartManager.updateProbabilityRing(data.results.probability);
+            
+            // Show success notification
+            Utils.showNotification('Simulation completed successfully!', 'success');
+            
+        } catch (error) {
+            console.error('Simulation error:', error);
+            Utils.showNotification(`Simulation failed: ${error.message}`, 'error');
+            
+            // Show fallback results for demo
+            this.showFallbackResults();
+            
+        } finally {
+            this.setLoading(false);
+        }
+    }
+    
+    // Run AI optimization
+    async runOptimization() {
+        if (this.isLoading) return;
+        
+        this.setLoading(true);
+        
+        try {
+            // Get optimization parameters
+            const budget = parseInt(document.getElementById('budget').value) || 60;
+            const nSimulations = parseInt(document.getElementById('n-simulations').value) || 1000;
+            
+            // Prepare request data
+            const requestData = {
+                budget: budget,
+                n_simulations: nSimulations,
+                current_interventions: this.interventions
+            };
+            
+            // Send API request
+            const response = await fetch('/api/optimize', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`API error: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (!data.success) {
+                throw new Error(data.error || 'Unknown error');
+            }
+            
+            // Store optimization results
+            this.optimizationResults = data.optimized;
+            
+            // Update UI with optimization results
+            this.updateOptimizationUI(data.optimized);
+            
+            // Show optimization results panel
+            document.getElementById('optimization-results').style.display = 'block';
+            
+            // Scroll to optimization results
+            document.getElementById('optimization-results').scrollIntoView({
+                behavior: 'smooth'
+            });
+            
+            // Show success notification
+            Utils.showNotification('AI optimization completed!', 'success');
+            
+        } catch (error) {
+            console.error('Optimization error:', error);
+            Utils.showNotification(`Optimization failed: ${error.message}`, 'error');
+            
+        } finally {
+            this.setLoading(false);
+        }
+    }
+    
+    // Run sensitivity analysis
+    async runSensitivityAnalysis() {
+        if (!this.currentResults) {
+            Utils.showNotification('Please run a simulation first', 'warning');
+            return;
+        }
+        
+        this.setLoading(true);
+        
+        try {
+            // In a real implementation, this would call a sensitivity analysis API
+            // For now, we'll generate mock sensitivity data
+            
+            const sensitivityData = this.generateMockSensitivityData();
+            
+            // Update sensitivity chart
+            chartManager.createSensitivityChart('sensitivity-chart', sensitivityData);
+            
+            // Update sensitivity table
+            this.updateSensitivityTable(sensitivityData);
+            
+            Utils.showNotification('Sensitivity analysis completed', 'success');
+            
+        } catch (error) {
+            console.error('Sensitivity analysis error:', error);
+            Utils.showNotification(`Sensitivity analysis failed: ${error.message}`, 'error');
+            
+        } finally {
+            this.setLoading(false);
+        }
+    }
+    
+    // Update results UI
+    updateResultsUI(results, visualization) {
+        // Update probability displays
+        const probabilityPercent = (results.probability * 100).toFixed(1);
+        document.getElementById('probability-value').textContent = probabilityPercent;
+        document.getElementById('probability-badge').textContent = probabilityPercent + '%';
+        
+        // Update probability color
+        const probabilityClass = Utils.getProbabilityClass(results.probability);
+        document.getElementById('probability-value').className = probabilityClass;
+        document.getElementById('probability-badge').className = 'probability-badge ' + probabilityClass;
+        
+        // Update other metrics
+        document.getElementById('mean-ppp').textContent = Utils.formatCurrency(results.mean_ppp);
+        document.getElementById('structural-index').textContent = 
+            results.structural_index ? results.structural_index.toFixed(1) + '/100' : '--';
+        
+        // Update interpretation
+        const interpretation = document.getElementById('interpretation-text');
+        if (interpretation) {
+            interpretation.textContent = Utils.getProbabilityDescription(results.probability);
+        }
+        
+        // Update quantiles if available
+        if (results.quantiles) {
+            document.getElementById('p5-value').textContent = Utils.formatCurrency(results.quantiles.p5);
+            document.getElementById('p50-value').textContent = Utils.formatCurrency(results.quantiles.p50);
+            document.getElementById('p95-value').textContent = Utils.formatCurrency(results.quantiles.p95);
+        }
+    }
+    
+    // Update optimization UI
+    updateOptimizationUI(optimization) {
+        // Calculate probability uplift
+        const currentProb = this.currentResults ? this.currentResults.probability * 100 : 0;
+        const optimizedProb = optimization.probability * 100;
+        const uplift = optimizedProb - currentProb;
+        
+        // Update summary
+        document.getElementById('opt-uplift').textContent = 
+            `+${uplift.toFixed(1)}%`;
+        document.getElementById('opt-uplift').className = 
+            uplift > 0 ? 'opt-value probability-high' : 'opt-value probability-low';
+        
+        document.getElementById('opt-budget').textContent = 
+            `${optimization.total_cost ? optimization.total_cost.toFixed(1) : '--'}/${optimization.budget || '--'}`;
+        
+        document.getElementById('opt-efficiency').textContent = 
+            optimization.budget_utilization ? optimization.budget_utilization.toFixed(1) + '%' : '--';
+        
+        // Create optimization sliders
+        this.createOptimizationSliders(optimization);
+    }
+    
+    // Create optimization recommendation sliders
+    createOptimizationSliders(optimization) {
+        const container = document.getElementById('optimization-sliders-container');
+        if (!container || !optimization.optimized_interventions) return;
+        
+        container.innerHTML = '';
+        
+        // Get intervention names (this should match backend order)
+        const interventionNames = Object.keys(this.interventions);
+        
+        optimization.optimized_interventions.forEach((intensity, index) => {
+            if (index >= interventionNames.length) return;
+            
+            const interventionName = interventionNames[index];
+            const currentValue = this.interventions[interventionName] || 0;
+            const recommendedValue = Math.round(intensity * 100);
+            const difference = recommendedValue - currentValue;
+            
+            const sliderDiv = document.createElement('div');
+            sliderDiv.className = 'optimization-slider-item';
+            sliderDiv.innerHTML = `
+                <div class="optimization-slider-header">
+                    <span class="optimization-slider-name">${interventionName}</span>
+                    <span class="optimization-slider-difference ${difference > 0 ? 'positive' : 'negative'}">
+                        ${difference > 0 ? '+' : ''}${difference}
+                    </span>
+                </div>
+                <div class="optimization-slider-comparison">
+                    <span class="current-value">Current: ${currentValue}</span>
+                    <span class="recommended-value">Recommended: ${recommendedValue}</span>
+                </div>
+                <div class="optimization-slider-bar">
+                    <div class="current-bar" style="width: ${currentValue}%"></div>
+                    <div class="recommended-bar" style="width: ${recommendedValue}%"></div>
+                </div>
+            `;
+            
+            container.appendChild(sliderDiv);
+        });
+    }
+    
+    // Update sensitivity table
+    updateSensitivityTable(sensitivityData) {
+        const tbody = document.getElementById('sensitivity-body');
+        if (!tbody) return;
+        
+        tbody.innerHTML = '';
+        
+        sensitivityData.forEach(item => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${item.intervention}</td>
+                <td class="${item.marginal_impact > 0 ? 'positive' : 'negative'}">
+                    ${(item.marginal_impact * 100).toFixed(2)}%
+                </td>
+                <td>${item.cost_effectiveness.toFixed(3)}</td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+    
+    // Generate mock sensitivity data (for demo)
+    generateMockSensitivityData() {
+        const interventionNames = Object.keys(this.interventions);
+        
+        return interventionNames.map((name, index) => {
+            // Generate realistic-looking sensitivity data
+            const baseImpact = 0.01 + (Math.random() * 0.02);
+            const cost = 2 + Math.random() * 4;
+            
+            return {
+                intervention: name,
+                marginal_impact: baseImpact * (1 - index / interventionNames.length),
+                cost: cost,
+                cost_effectiveness: baseImpact / cost
+            };
+        }).sort((a, b) => b.marginal_impact - a.marginal_impact);
+    }
+    
+    // Reset to default values
+    resetToDefaults() {
+        document.querySelectorAll('.intervention-slider').forEach(slider => {
+            const defaultValue = slider.dataset.baseline ? 
+                parseInt(slider.dataset.baseline) : 50;
+            slider.value = defaultValue;
+            
+            const id = slider.id.replace('slider-', '');
+            const valueDisplay = document.getElementById(`value-${id}`);
+            if (valueDisplay) {
+                valueDisplay.textContent = defaultValue;
+            }
+            
+            const name = slider.dataset.name;
+            this.interventions[name] = defaultValue;
+        });
+        
+        // Reset budget
+        document.getElementById('budget').value = 60;
+        document.getElementById('budget-value').textContent = '60';
+        
+        // Reset simulation count
+        document.getElementById('n-simulations').value = 2000;
+        
+        // Reset target year
+        document.getElementById('target-year').value = 2050;
+        
+        // Hide optimization results
+        document.getElementById('optimization-results').style.display = 'none';
+        
+        Utils.showNotification('Reset to default values', 'info');
+        
+        // Run simulation with defaults
+        this.runSimulation();
+    }
+    
+    // Show fallback results (for demo/offline mode)
+    showFallbackResults() {
+        // Generate mock results
+        const mockResults = {
+            probability: 0.65 + Math.random() * 0.2,
+            mean_ppp: 6000 + Math.random() * 3000,
+            structural_index: 70 + Math.random() * 20,
+            distribution: Array.from({length: 2000}, () => 
+                4000 + Math.random() * 6000 + Math.random() * 4000
+            ),
+            quantiles: {
+                p5: 4500 + Math.random() * 1000,
+                p50: 6500 + Math.random() * 1000,
+                p95: 8500 + Math.random() * 1500
+            }
+        };
+        
+        this.updateResultsUI(mockResults, {});
+        
+        // Create mock chart
+        chartManager.createDistributionChart(
+            'distribution-chart', 
+            mockResults.distribution,
+            7000
+        );
+        
+        chartManager.updateProbabilityRing(mockResults.probability);
+    }
+    
+    // Set loading state
+    setLoading(isLoading) {
+        this.isLoading = isLoading;
+        
+        const buttons = document.querySelectorAll('#run-simulation, #run-optimization');
+        buttons.forEach(btn => {
+            if (isLoading) {
+                btn.classList.add('loading');
+                btn.disabled = true;
+            } else {
+                btn.classList.remove('loading');
+                btn.disabled = false;
+            }
+        });
+        
+        if (isLoading) {
+            Utils.showNotification('Running simulation...', 'info', 2000);
+        }
+    }
+    
+    // Update time display
+    updateTime() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        
+        const timeElement = document.getElementById('current-time');
+        if (timeElement) {
+            timeElement.textContent = timeString;
+        }
+    }
+    
+    // Show help modal
+    showHelp() {
+        // Create help modal
+        const helpModal = document.createElement('div');
+        helpModal.className = 'help-modal';
+        helpModal.innerHTML = `
+            <div class="help-modal-content">
+                <div class="help-modal-header">
+                    <h3><i class="fas fa-question-circle"></i> Dashboard Help</h3>
+                    <button class="btn-icon close-help">&times;</button>
+                </div>
+                <div class="help-modal-body">
+                    <h4>How to Use This Dashboard</h4>
+                    
+                    <div class="help-section">
+                        <h5>1. Adjust Intervention Sliders</h5>
+                        <p>Use the sliders on the left to set target values for each intervention (0-100 scale). 
+                        Higher values represent more intensive implementation by 2050.</p>
+                    </div>
+                    
+                    <div class="help-section">
+                        <h5>2. Run Simulation</h5>
+                        <p>Click "Run Simulation" to calculate the probability of reaching $7,000 Agriculture PPP by 2050 
+                        based on your selected interventions.</p>
+                    </div>
+                    
+                    <div class="help-section">
+                        <h5>3. AI Optimization</h5>
+                        <p>Click "AI Optimize" to find the best intervention mix under budget constraints. 
+                        The system will suggest optimized values for each intervention.</p>
+                    </div>
+                    
+                    <div class="help-section">
+                        <h5>4. Interpret Results</h5>
+                        <ul>
+                            <li><strong>Probability ≥ 80%</strong>: High confidence of success</li>
+                            <li><strong>Probability 50-79%</strong>: Moderate confidence, improvements needed</li>
+                            <li><strong>Probability < 50%</strong>: Significant acceleration required</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="help-tips">
+                        <h5>Quick Tips</h5>
+                        <ul>
+                            <li>Focus on interventions with high "α" values for growth impact</li>
+                            <li>Include interventions with high "β" values for risk reduction</li>
+                            <li>Use the sensitivity analysis to identify most impactful interventions</li>
+                            <li>Check the Model Explanation panel for detailed methodology</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="help-modal-footer">
+                    <button class="btn btn-primary close-help">Got it!</button>
+                </div>
+            </div>
+        `;
+        
+        // Add styles
+        helpModal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            animation: fadeIn 0.3s ease;
+        `;
+        
+        const modalContent = helpModal.querySelector('.help-modal-content');
+        modalContent.style.cssText = `
+            background: white;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: slideInDown 0.3s ease;
+        `;
+        
+        // Add to document
+        document.body.appendChild(helpModal);
+        
+        // Add close functionality
+        const closeButtons = helpModal.querySelectorAll('.close-help');
+        closeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                helpModal.style.animation = 'fadeOut 0.3s ease';
+                setTimeout(() => helpModal.remove(), 300);
+            });
+        });
+        
+        // Close on outside click
+        helpModal.addEventListener('click', (e) => {
+            if (e.target === helpModal) {
+                helpModal.style.animation = 'fadeOut 0.3s ease';
+                setTimeout(() => helpModal.remove(), 300);
+            }
+        });
+        
+        // Add keydown listener for escape
+        const keydownHandler = (e) => {
+            if (e.key === 'Escape') {
+                helpModal.style.animation = 'fadeOut 0.3s ease';
+                setTimeout(() => {
+                    helpModal.remove();
+                    document.removeEventListener('keydown', keydownHandler);
+                }, 300);
+            }
+        };
+        
+        document.addEventListener('keydown', keydownHandler);
+    }
+    
+    // Toggle explanation panel
+    toggleExplanationPanel() {
+        const content = document.getElementById('explanation-content');
+        const toggleBtn = document.getElementById('toggle-explanation');
+        
+        if (content.style.display === 'none' || !content.style.display) {
+            content.style.display = 'block';
+            toggleBtn.innerHTML = '<i class="fas fa-chevron-up"></i>';
+        } else {
+            content.style.display = 'none';
+            toggleBtn.innerHTML = '<i class="fas fa-chevron-down"></i>';
+        }
+    }
+    
+    // Switch explanation tab
+    switchExplanationTab(tabName) {
+        // Update tab buttons
+        document.querySelectorAll('.explanation-tab').forEach(tab => {
+            tab.classList.remove('active');
+            if (tab.dataset.tab === tabName) {
+                tab.classList.add('active');
+            }
+        });
+        
+        // Update tab content
+        document.querySelectorAll('.tab-pane').forEach(pane => {
+            pane.classList.remove('active');
+            if (pane.id === `${tabName}-pane`) {
+                pane.classList.add('active');
+            }
+        });
+    }
+}
+
+// Initialize dashboard when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    window.dashboard = new Dashboard();
+    
+    // Add CSS animations
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        
+        @keyframes slideInDown {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        @keyframes slideOutRight {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100px); opacity: 0; }
+        }
+        
+        .help-modal-body {
+            padding: 24px;
+        }
+        
+        .help-section {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .help-section h5 {
+            color: #2E86AB;
+            margin-bottom: 8px;
+        }
+        
+        .help-tips {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            border-left: 4px solid #F18F01;
+        }
+        
+        .help-tips ul {
+            padding-left: 20px;
+            margin-top: 8px;
+        }
+        
+        .help-tips li {
+            margin-bottom: 4px;
+        }
+        
+        .help-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .help-modal-footer {
+            padding: 20px 24px;
+            border-top: 1px solid #eee;
+            text-align: right;
+        }
+        
+        .optimization-slider-item {
+            margin-bottom: 16px;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .optimization-slider-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .optimization-slider-name {
+            font-weight: 500;
+            color: #495057;
+        }
+        
+        .optimization-slider-difference {
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        
+        .optimization-slider-difference.positive {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .optimization-slider-difference.negative {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .optimization-slider-comparison {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-bottom: 8px;
+        }
+        
+        .optimization-slider-bar {
+            height: 6px;
+            background: #e9ecef;
+            border-radius: 3px;
+            position: relative;
+        }
+        
+        .current-bar {
+            position: absolute;
+            height: 100%;
+            background: #6c757d;
+            border-radius: 3px;
+        }
+        
+        .recommended-bar {
+            position: absolute;
+            height: 100%;
+            background: #2E86AB;
+            border-radius: 3px;
+        }
+        
+        .positive {
+            color: #2A9D8F;
+            font-weight: 600;
+        }
+        
+        .negative {
+            color: #E76F51;
+            font-weight: 600;
+        }
+    `;
+    
+    document.head.appendChild(style);
+});

@@ -1,0 +1,466 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Rwanda Agriculture Digital Twin{% endblock %}
+
+{% block head_extra %}
+<style>
+    /* Dynamic probability color */
+    .probability-high { color: #2A9D8F; }
+    .probability-medium { color: #E9C46A; }
+    .probability-low { color: #E76F51; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <div class="header-left">
+            <h1><i class="fas fa-seedling"></i> Agriculture Digital Twin Dashboard</h1>
+            <p class="header-subtitle">Interactive Monte Carlo Simulation & AI Optimization for Vision 2050</p>
+        </div>
+        <div class="header-right">
+            <div class="time-display">
+                <i class="fas fa-clock"></i>
+                <span id="current-time">{{ now.strftime('%H:%M') }}</span>
+            </div>
+            <button class="btn btn-outline" id="help-btn">
+                <i class="fas fa-question-circle"></i> Help
+            </button>
+        </div>
+    </div>
+    
+    <!-- Main Dashboard Grid -->
+    <div class="dashboard-grid">
+        <!-- Left Column: Controls -->
+        <div class="dashboard-column controls-column">
+            <!-- Scenario Controls -->
+            <div class="control-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-sliders-h"></i> Intervention Controls</h3>
+                    <button class="btn-icon" id="reset-btn" title="Reset to defaults">
+                        <i class="fas fa-redo"></i>
+                    </button>
+                </div>
+                
+                <div class="control-groups">
+                    {% for category in ['land_water', 'productivity', 'technology', 'value_chain', 'finance_risk'] %}
+                    <div class="control-group">
+                        <h4 class="group-title">
+                            <i class="fas fa-{{ 
+                                'tractor' if category == 'land_water' 
+                                else 'chart-line' if category == 'productivity'
+                                else 'microchip' if category == 'technology'
+                                else 'exchange-alt' if category == 'value_chain'
+                                else 'shield-alt'
+                            }}"></i>
+                            {{ 
+                                'Land & Water' if category == 'land_water'
+                                else 'Productivity' if category == 'productivity'
+                                else 'Technology' if category == 'technology'
+                                else 'Value Chain & Markets' if category == 'value_chain'
+                                else 'Finance & Risk'
+                            }}
+                        </h4>
+                        
+                        <div class="sliders-container">
+                            {% for intervention in interventions %}
+                            {% if intervention.category == category %}
+                            <div class="slider-item" data-id="{{ intervention.id }}">
+                                <div class="slider-header">
+                                    <span class="slider-name">{{ intervention.name }}</span>
+                                    <span class="slider-value" id="value-{{ intervention.id }}">
+                                        {{ default_targets[intervention.name] }}
+                                    </span>
+                                </div>
+                                <input type="range" 
+                                       class="intervention-slider" 
+                                       id="slider-{{ intervention.id }}"
+                                       min="0" 
+                                       max="100" 
+                                       value="{{ default_targets[intervention.name] }}"
+                                       data-name="{{ intervention.name }}"
+                                       data-baseline="{{ intervention.baseline }}">
+                                <div class="slider-footer">
+                                    <span class="baseline">Baseline: {{ intervention.baseline }}</span>
+                                    <span class="unit">{{ intervention.unit }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="card-footer">
+                    <button class="btn btn-primary" id="run-simulation">
+                        <i class="fas fa-play"></i> Run Simulation
+                    </button>
+                    <button class="btn btn-secondary" id="run-optimization">
+                        <i class="fas fa-robot"></i> AI Optimize
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Simulation Settings -->
+            <div class="control-card">
+                <h3><i class="fas fa-cogs"></i> Simulation Settings</h3>
+                
+                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label for="n-simulations">
+                            <i class="fas fa-chart-bar"></i> Monte Carlo Runs
+                        </label>
+                        <input type="number" 
+                               id="n-simulations" 
+                               min="500" 
+                               max="10000" 
+                               step="500" 
+                               value="2000">
+                    </div>
+                    
+                    <div class="setting-item">
+                        <label for="budget">
+                            <i class="fas fa-coins"></i> Budget Constraint
+                        </label>
+                        <input type="range" 
+                               id="budget" 
+                               min="30" 
+                               max="100" 
+                               step="5" 
+                               value="60">
+                        <div class="budget-display">
+                            <span>Budget: </span>
+                            <span id="budget-value">60</span>
+                            <span> / 100 units</span>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <label for="target-year">
+                            <i class="fas fa-calendar-alt"></i> Target Year
+                        </label>
+                        <select id="target-year">
+                            <option value="2040">2040</option>
+                            <option value="2045">2045</option>
+                            <option value="2050" selected>2050</option>
+                            <option value="2055">2055</option>
+                            <option value="2060">2060</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Column: Results -->
+        <div class="dashboard-column results-column">
+            <!-- Probability Card -->
+            <div class="result-card probability-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-bullseye"></i> Target Achievement Probability</h3>
+                    <div class="probability-badge" id="probability-badge">--%</div>
+                </div>
+                
+                <div class="probability-content">
+                    <div class="probability-display">
+                        <div class="probability-circle">
+                            <svg width="180" height="180" viewBox="0 0 180 180">
+                                <circle cx="90" cy="90" r="80" stroke="#f0f0f0" stroke-width="12" fill="none"/>
+                                <circle id="probability-ring" cx="90" cy="90" r="80" stroke="#2E86AB" 
+                                        stroke-width="12" fill="none" stroke-linecap="round"
+                                        stroke-dasharray="502.4" stroke-dashoffset="502.4" transform="rotate(-90 90 90)"/>
+                            </svg>
+                            <div class="probability-text">
+                                <span id="probability-value">--</span>
+                                <span class="percent">%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="probability-details">
+                            <div class="detail-item">
+                                <span class="detail-label">Target:</span>
+                                <span class="detail-value">$7,000 PPP</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Current Mean:</span>
+                                <span class="detail-value" id="mean-ppp">--</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Structural Index:</span>
+                                <span class="detail-value" id="structural-index">--</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Simulations:</span>
+                                <span class="detail-value" id="sim-count">--</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="probability-interpretation">
+                        <h4>Interpretation</h4>
+                        <div class="interpretation-text" id="interpretation-text">
+                            Run simulation to see probability interpretation...
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Distribution Chart -->
+            <div class="result-card chart-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-chart-area"></i> Monte Carlo Distribution</h3>
+                    <div class="chart-controls">
+                        <button class="btn-icon" id="download-chart" title="Download chart">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        <button class="btn-icon" id="fullscreen-chart" title="Fullscreen">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="distribution-chart"></canvas>
+                </div>
+                
+                <div class="chart-footer">
+                    <div class="quantile-display">
+                        <div class="quantile">
+                            <span class="quantile-label">5th Percentile:</span>
+                            <span class="quantile-value" id="p5-value">--</span>
+                        </div>
+                        <div class="quantile">
+                            <span class="quantile-label">Median:</span>
+                            <span class="quantile-value" id="p50-value">--</span>
+                        </div>
+                        <div class="quantile">
+                            <span class="quantile-label">95th Percentile:</span>
+                            <span class="quantile-value" id="p95-value">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sensitivity Analysis -->
+            <div class="result-card sensitivity-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-sort-amount-up"></i> Intervention Sensitivity</h3>
+                    <button class="btn btn-sm" id="run-sensitivity">
+                        <i class="fas fa-bolt"></i> Analyze
+                    </button>
+                </div>
+                
+                <div class="sensitivity-content">
+                    <div class="sensitivity-chart-container">
+                        <canvas id="sensitivity-chart"></canvas>
+                    </div>
+                    
+                    <div class="sensitivity-table-container">
+                        <table id="sensitivity-table">
+                            <thead>
+                                <tr>
+                                    <th>Intervention</th>
+                                    <th>Impact</th>
+                                    <th>Cost Effect</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sensitivity-body">
+                                <!-- Will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Optimization Results -->
+            <div class="result-card optimization-card" id="optimization-results" style="display: none;">
+                <div class="card-header">
+                    <h3><i class="fas fa-robot"></i> AI Optimization Results</h3>
+                    <div class="optimization-badge">
+                        <i class="fas fa-lightbulb"></i> Recommended
+                    </div>
+                </div>
+                
+                <div class="optimization-content">
+                    <div class="optimization-summary">
+                        <div class="opt-summary-item">
+                            <span class="opt-label">Probability Uplift:</span>
+                            <span class="opt-value" id="opt-uplift">+--%</span>
+                        </div>
+                        <div class="opt-summary-item">
+                            <span class="opt-label">Budget Used:</span>
+                            <span class="opt-value" id="opt-budget">--/--</span>
+                        </div>
+                        <div class="opt-summary-item">
+                            <span class="opt-label">Cost Efficiency:</span>
+                            <span class="opt-value" id="opt-efficiency">--</span>
+                        </div>
+                    </div>
+                    
+                    <div class="optimization-sliders">
+                        <h4>Recommended Adjustments</h4>
+                        <div id="optimization-sliders-container">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Explanation Panel (Collapsible) -->
+    <div class="explanation-panel">
+        <div class="explanation-header">
+            <h3><i class="fas fa-info-circle"></i> Model Explanation</h3>
+            <button class="btn-icon" id="toggle-explanation">
+                <i class="fas fa-chevron-up"></i>
+            </button>
+        </div>
+        
+        <div class="explanation-content" id="explanation-content">
+            <div class="explanation-tabs">
+                <button class="explanation-tab active" data-tab="monte-carlo">Monte Carlo Model</button>
+                <button class="explanation-tab" data-tab="interventions">Interventions</button>
+                <button class="explanation-tab" data-tab="optimization">AI Optimization</button>
+                <button class="explanation-tab" data-tab="interpretation">Policy Interpretation</button>
+            </div>
+            
+            <div class="explanation-tab-content">
+                <div class="tab-pane active" id="monte-carlo-pane">
+                    <h4>Monte Carlo Simulation Methodology</h4>
+                    <p>The model simulates thousands of possible growth paths for Agriculture PPP from 2025 to 2050 using stochastic differential equations.</p>
+                    
+                    <div class="equation-display">
+                        <code>PPP<sub>t+1</sub> = PPP<sub>t</sub> × (1 + μ + σ·ε)</code>
+                    </div>
+                    
+                    <ul>
+                        <li><strong>μ (Drift)</strong> = 5.5% baseline + ∑(αᵢ × Intervention Intensityᵢ)</li>
+                        <li><strong>σ (Volatility)</strong> = 2% baseline - ∑(βᵢ × Intervention Intensityᵢ)</li>
+                        <li><strong>ε</strong> = Random shock ~ N(0,1) representing uncertainties</li>
+                    </ul>
+                    
+                    <p>The probability of reaching $7,000 is calculated as the proportion of simulations where PPP ≥ 7,000 in 2050.</p>
+                </div>
+                
+                <div class="tab-pane" id="interventions-pane">
+                    <h4>20 Intervention Levers</h4>
+                    <p>Each intervention affects both growth (α coefficient) and risk reduction (β coefficient):</p>
+                    
+                    <div class="intervention-types">
+                        <div class="type-card">
+                            <h5>High Impact (α ≥ 0.015)</h5>
+                            <ul>
+                                <li>Irrigation Efficiency (+1.6% growth)</li>
+                                <li>Export Competitiveness (+1.6%)</li>
+                                <li>Staple/Cash Crop Productivity (+1.5%)</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="type-card">
+                            <h5>High Risk Reduction (β ≥ 0.01)</h5>
+                            <ul>
+                                <li>Climate Adaptation (-1.2% volatility)</li>
+                                <li>Supply-Demand Stability (-1.3%)</li>
+                                <li>Insurance Penetration (-1.1%)</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="type-card">
+                            <h5>Cost-Effective</h5>
+                            <ul>
+                                <li>Digital Twin (Low cost, medium impact)</li>
+                                <li>Digital Agriculture (Moderate cost)</li>
+                                <li>Soil Health (Low cost, long-term benefits)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-pane" id="optimization-pane">
+                    <h4>AI Optimization Algorithm</h4>
+                    <p>The system uses constrained optimization to find the intervention mix that maximizes probability under budget constraints:</p>
+                    
+                    <div class="optimization-steps">
+                        <div class="opt-step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h5>Random Sampling</h5>
+                                <p>Generate random intervention combinations within budget</p>
+                            </div>
+                        </div>
+                        
+                        <div class="opt-step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h5>Monte Carlo Evaluation</h5>
+                                <p>Run simulations for each combination</p>
+                            </div>
+                        </div>
+                        
+                        <div class="opt-step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h5>Selection</h5>
+                                <p>Keep combination with highest probability</p>
+                            </div>
+                        </div>
+                        
+                        <div class="opt-step">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h5>Sensitivity Analysis</h5>
+                                <p>Rank interventions by marginal impact</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-pane" id="interpretation-pane">
+                    <h4>Policy Interpretation Guide</h4>
+                    
+                    <div class="interpretation-guide">
+                        <div class="guide-item">
+                            <div class="guide-color probability-high"></div>
+                            <div class="guide-content">
+                                <h5>High Probability (≥80%)</h5>
+                                <p>Current intervention mix has strong likelihood of achieving Vision 2050 target. Focus on maintaining momentum.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="guide-item">
+                            <div class="guide-color probability-medium"></div>
+                            <div class="guide-content">
+                                <h5>Medium Probability (50-79%)</h5>
+                                <p>Substantial progress needed. Use AI optimization to identify priority interventions.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="guide-item">
+                            <div class="guide-color probability-low"></div>
+                            <div class="guide-content">
+                                <h5>Low Probability (<50%)</h5>
+                                <p>Significant acceleration required. Consider increasing budget or re-prioritizing interventions.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="policy-actions">
+                        <h5>Recommended Actions Based on Results:</h5>
+                        <ul>
+                            <li><strong>Probability < 50%:</strong> Increase budget, focus on high-α interventions</li>
+                            <li><strong>Volatility > 1.5%:</strong> Increase β-focused interventions (insurance, climate adaptation)</li>
+                            <li><strong>Structural Index < 70:</strong> Balance investments across all categories</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

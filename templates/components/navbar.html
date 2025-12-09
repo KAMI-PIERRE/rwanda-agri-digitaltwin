@@ -1,0 +1,109 @@
+<nav class="navbar">
+    <div class="container">
+        <div class="navbar-brand">
+            <a href="{{ url_for('index') }}" class="brand-logo">
+                <span class="rwanda-flag">🇷🇼</span>
+                <span class="brand-text">Rwanda Agriculture Digital Twin</span>
+            </a>
+        </div>
+        
+        <div class="navbar-menu">
+            <a href="{{ url_for('index') }}" class="nav-link">
+                <i class="fas fa-home"></i> Home
+            </a>
+            <a href="{{ url_for('dashboard') }}" class="nav-link active">
+                <i class="fas fa-dashboard"></i> Dashboard
+            </a>
+            <a href="#methodology" class="nav-link">
+                <i class="fas fa-book"></i> Methodology
+            </a>
+            <a href="#about" class="nav-link">
+                <i class="fas fa-info-circle"></i> About
+            </a>
+        </div>
+        
+        <div class="navbar-actions">
+            <div class="version-badge">v1.0.0</div>
+        </div>
+    </div>
+</nav>
+
+<style>
+    .navbar {
+        background: white;
+        box-shadow: var(--shadow-md);
+        padding: var(--space-md) 0;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+    }
+    
+    .navbar .container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .brand-logo {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--primary-color);
+        text-decoration: none;
+    }
+    
+    .rwanda-flag {
+        font-size: 1.5rem;
+    }
+    
+    .navbar-menu {
+        display: flex;
+        gap: var(--space-xl);
+    }
+    
+    .nav-link {
+        display: flex;
+        align-items: center;
+        gap: var(--space-xs);
+        color: var(--text-light);
+        text-decoration: none;
+        font-weight: 500;
+        padding: var(--space-sm) 0;
+        border-bottom: 2px solid transparent;
+        transition: all var(--transition-fast);
+    }
+    
+    .nav-link:hover,
+    .nav-link.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+    }
+    
+    .navbar-actions {
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+    }
+    
+    .version-badge {
+        background: var(--light-gray);
+        color: var(--text-light);
+        padding: var(--space-xs) var(--space-sm);
+        border-radius: var(--radius-sm);
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
+    @media (max-width: 768px) {
+        .navbar .container {
+            flex-direction: column;
+            gap: var(--space-md);
+        }
+        
+        .navbar-menu {
+            gap: var(--space-lg);
+        }
+    }
+</style>

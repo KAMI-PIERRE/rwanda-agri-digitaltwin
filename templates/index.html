@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rwanda Agriculture Digital Twin - Vision 2050</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/home.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-brand">
+                <a href="/" class="brand-logo">
+                    <span class="rwanda-flag">🇷🇼</span>
+                    <span class="brand-text">
+                        <span class="brand-main">Rwanda</span>
+                        <span class="brand-sub">Agriculture Digital Twin</span>
+                    </span>
+                </a>
+                <button class="navbar-toggler" id="navbar-toggler">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+            
+            <div class="navbar-menu" id="navbar-menu">
+                <a href="/" class="nav-link active">
+                    <i class="fas fa-home"></i> Home
+                </a>
+                <a href="/dashboard" class="nav-link">
+                    <i class="fas fa-dashboard"></i> Dashboard
+                </a>
+                <a href="#features" class="nav-link">
+                    <i class="fas fa-star"></i> Features
+                </a>
+                <a href="#methodology" class="nav-link">
+                    <i class="fas fa-book"></i> Methodology
+                </a>
+                <a href="#about" class="nav-link">
+                    <i class="fas fa-info-circle"></i> About
+                </a>
+                <a href="/dashboard" class="nav-cta">
+                    <i class="fas fa-rocket"></i> Launch App
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container">
+            <div class="hero-content animate__animated animate__fadeIn">
+                <div class="hero-text">
+                    <h1 class="hero-title">
+                        <span class="hero-highlight">Transforming</span> Rwanda's Agriculture
+                        <span class="hero-subtitle">AI-Driven Digital Twin for Vision 2050</span>
+                    </h1>
+                    
+                    <p class="hero-description">
+                        An interactive modeling platform simulating Rwanda's agricultural transition from 
+                        <strong>$803 PPP (2025)</strong> to <strong>$7,000 PPP (2050)</strong> using 
+                        Monte Carlo simulations, AI optimization, and real-time scenario analysis.
+                    </p>
+                    
+                    <div class="hero-stats">
+                        <div class="stat-card animate__animated animate__fadeInUp" data-delay="0.1s">
+                            <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
+                            <div class="stat-number" id="current-ppp">$803</div>
+                            <div class="stat-label">Current Ag PPP</div>
+                        </div>
+                        
+                        <div class="stat-card animate__animated animate__fadeInUp" data-delay="0.2s">
+                            <div class="stat-icon"><i class="fas fa-bullseye"></i></div>
+                            <div class="stat-number">$7,000</div>
+                            <div class="stat-label">Target 2050</div>
+                        </div>
+                        
+                        <div class="stat-card animate__animated animate__fadeInUp" data-delay="0.3s">
+                            <div class="stat-icon"><i class="fas fa-sliders-h"></i></div>
+                            <div class="stat-number">20+</div>
+                            <div class="stat-label">Intervention Levers</div>
+                        </div>
+                        
+                        <div class="stat-card animate__animated animate__fadeInUp" data-delay="0.4s">
+                            <div class="stat-icon"><i class="fas fa-robot"></i></div>
+                            <div class="stat-number">AI</div>
+                            <div class="stat-label">Optimization</div>
+                        </div>
+                    </div>
+                    
+                    <div class="hero-actions">
+                        <a href="/dashboard" class="btn btn-primary btn-lg">
+                            <i class="fas fa-play-circle"></i> Launch Interactive Dashboard
+                            <span class="btn-sub">Start Modeling</span>
+                        </a>
+                        <a href="#demo" class="btn btn-outline btn-lg">
+                            <i class="fas fa-eye"></i> Watch Demo
+                        </a>
+                    </div>
+                    
+                    <div class="hero-scroll">
+                        <a href="#features" class="scroll-down">
+                            <i class="fas fa-chevron-down"></i>
+                            <span>Explore Features</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="hero-visual">
+                    <div class="visual-card animate__animated animate__fadeInRight">
+                        <div class="visual-header">
+                            <h3><i class="fas fa-road"></i> Transformation Pathway</h3>
+                            <div class="visual-controls">
+                                <button class="visual-btn active" data-path="current">Current</button>
+                                <button class="visual-btn" data-path="target">2050 Target</button>
+                            </div>
+                        </div>
+                        
+                        <div class="pathway-visual">
+                            <div class="pathway-bar">
+                                <div class="pathway-fill" id="pathway-fill"></div>
+                            </div>
+                            <div class="pathway-labels">
+                                <div class="pathway-label">
+                                    <span>Subsistence</span>
+                                    <span class="pathway-percent" id="subsistence-percent">48%</span>
+                                </div>
+                                <div class="pathway-label">
+                                    <span>Advanced</span>
+                                    <span class="pathway-percent" id="advanced-percent">1%</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="pathway-stages">
+                            <div class="stage" data-stage="subsistence">
+                                <div class="stage-icon"><i class="fas fa-seedling"></i></div>
+                                <div class="stage-name">Subsistence</div>
+                                <div class="stage-range">48-52%</div>
+                            </div>
+                            <div class="stage" data-stage="smallholder">
+                                <div class="stage-icon"><i class="fas fa-home"></i></div>
+                                <div class="stage-name">Smallholder</div>
+                                <div class="stage-range">30-35%</div>
+                            </div>
+                            <div class="stage" data-stage="semi">
+                                <div class="stage-icon"><i class="fas fa-store"></i></div>
+                                <div class="stage-name">Semi-Commercial</div>
+                                <div class="stage-range">10-14%</div>
+                            </div>
+                            <div class="stage" data-stage="commercial">
+                                <div class="stage-icon"><i class="fas fa-industry"></i></div>
+                                <div class="stage-name">Commercial</div>
+                                <div class="stage-range">3-5%</div>
+                            </div>
+                            <div class="stage" data-stage="advanced">
+                                <div class="stage-icon"><i class="fas fa-robot"></i></div>
+                                <div class="stage-name">Advanced</div>
+                                <div class="stage-range"><1%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features-section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title animate__animated animate__fadeInUp">
+                    <span class="section-highlight">Powerful</span> Capabilities
+                </h2>
+                <p class="section-subtitle">Advanced tools for evidence-based policy making</p>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature-card animate__animated animate__fadeInUp" data-delay="0.1s">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-bar"></i>
+                        <div class="feature-badge">Monte Carlo</div>
+                    </div>
+                    <h3 class="feature-title">Stochastic Simulation</h3>
+                    <p class="feature-description">
+                        Thousands of stochastic simulations model growth uncertainties and 
+                        calculate probability distributions for agricultural PPP outcomes.
+                    </p>
+                    <div class="feature-stats">
+                        <span><i class="fas fa-calculator"></i> 2,000+ simulations</span>
+                        <span><i class="fas fa-percentage"></i> Probability-based</span>
+                    </div>
+                </div>
+                
+                <div class="feature-card animate__animated animate__fadeInUp" data-delay="0.2s">
+                    <div class="feature-icon">
+                        <i class="fas fa-robot"></i>
+                        <div class="feature-badge">AI Powered</div>
+                    </div>
+                    <h3 class="feature-title">Intelligent Optimization</h3>
+                    <p class="feature-description">
+                        Multi-objective optimization under budget constraints identifies 
+                        the most effective intervention mix for achieving Vision 2050 targets.
+                    </p>
+                    <div class="feature-stats">
+                        <span><i class="fas fa-coins"></i> Budget-aware</span>
+                        <span><i class="fas fa-lightbulb"></i> Smart recommendations</span>
+                    </div>
+                </div>
+                
+                <div class="feature-card animate__animated animate__fadeInUp" data-delay="0.3s">
+                    <div class="feature-icon">
+                        <i class="fas fa-sliders-h"></i>
+                        <div class="feature-badge">20+ Levers</div>
+                    </div>
+                    <h3 class="feature-title">Comprehensive Interventions</h3>
+                    <p class="feature-description">
+                        Complete coverage across land, water, productivity, technology, 
+                        value chains, finance, and risk management dimensions.
+                    </p>
+                    <div class="feature-stats">
+                        <span><i class="fas fa-tractor"></i> Land & Water</span>
+                        <span><i class="fas fa-chart-line"></i> Productivity</span>
+                        <span><i class="fas fa-microchip"></i> Technology</span>
+                    </div>
+                </div>
+                
+                <div class="feature-card animate__animated animate__fadeInUp" data-delay="0.4s">
+                    <div class="feature-icon">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <div class="feature-badge">Real-time</div>
+                    </div>
+                    <h3 class="feature-title">Interactive Analytics</h3>
+                    <p class="feature-description">
+                        Live dashboards with probability updates, sensitivity analysis, 
+                        and scenario comparison tools for policymakers.
+                    </p>
+                    <div class="feature-stats">
+                        <span><i class="fas fa-sync"></i> Live updates</span>
+                        <span><i class="fas fa-chart-pie"></i> Visual analytics</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Demo Section -->
+    <section id="demo" class="demo-section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title animate__animated animate__fadeInUp">
+                    <span class="section-highlight">Interactive</span> Demonstration
+                </h2>
+                <p class="section-subtitle">Experience the power of Monte Carlo simulation</p>
+            </div>
+            
+            <div class="demo-container">
+                <div class="demo-controls">
+                    <div class="demo-slider">
+                        <label for="demo-growth">
+                            <i class="fas fa-chart-line"></i> Growth Rate Adjustment
+                            <span id="demo-growth-value">+0.5%</span>
+                        </label>
+                        <input type="range" id="demo-growth" min="-2" max="4" step="0.1" value="0.5">
+                    </div>
+                    
+                    <div class="demo-slider">
+                        <label for="demo-volatility">
+                            <i class="fas fa-shield-alt"></i> Risk Reduction
+                            <span id="demo-volatility-value">-0.2%</span>
+                        </label>
+                        <input type="range" id="demo-volatility" min="0" max="1" step="0.05" value="0.2">
+                    </div>
+                    
+                    <button class="btn btn-primary" id="demo-simulate">
+                        <i class="fas fa-play"></i> Run Demo Simulation
+                    </button>
+                </div>
+                
+                <div class="demo-results">
+                    <div class="result-card">
+                        <div class="result-header">
+                            <h3><i class="fas fa-bullseye"></i> Simulation Results</h3>
+                            <div class="result-badge" id="demo-probability">--%</div>
+                        </div>
+                        
+                        <div class="result-chart">
+                            <canvas id="demo-chart"></canvas>
+                        </div>
+                        
+                        <div class="result-details">
+                            <div class="detail">
+                                <span class="detail-label">Mean PPP 2050:</span>
+                                <span class="detail-value" id="demo-mean">--</span>
+                            </div>
+                            <div class="detail">
+                                <span class="detail-label">Probability ≥ $7,000:</span>
+                                <span class="detail-value" id="demo-prob-value">--%</span>
+                            </div>
+                            <div class="detail">
+                                <span class="detail-label">Confidence Level:</span>
+                                <span class="detail-value" id="demo-confidence">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="demo-explanation">
+                <h4><i class="fas fa-info-circle"></i> How It Works</h4>
+                <p>
+                    Adjust the growth rate and risk reduction sliders to see how different policy interventions 
+                    affect the probability of reaching Rwanda's Vision 2050 agricultural income target. 
+                    The Monte Carlo simulation runs 1,000 scenarios to calculate the probability distribution.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Methodology Section -->
+    <section id="methodology" class="methodology-section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title animate__animated animate__fadeInUp">
+                    <span class="section-highlight">Scientific</span> Methodology
+                </h2>
+                <p class="section-subtitle">Robust modeling based on economic principles</p>
+            </div>
+            
+            <div class="methodology-content">
+                <div class="methodology-steps">
+                    <div class="step animate__animated animate__fadeInLeft" data-delay="0.1s">
+                        <div class="step-number">01</div>
+                        <div class="step-content">
+                            <h3>Intervention Mapping</h3>
+                            <p>Each of 20+ interventions mapped to growth (α) and volatility (β) coefficients</p>
+                            <div class="step-visual">
+                                <div class="coeff">
+                                    <span class="coeff-label">Growth Impact (α)</span>
+                                    <div class="coeff-bar"><div class="coeff-fill" style="width: 85%"></div></div>
+                                    <span class="coeff-value">+0.8% to +1.6%</span>
+                                </div>
+                                <div class="coeff">
+                                    <span class="coeff-label">Risk Reduction (β)</span>
+                                    <div class="coeff-bar"><div class="coeff-fill" style="width: 65%"></div></div>
+                                    <span class="coeff-value">-0.5% to -1.3%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="step animate__animated animate__fadeInLeft" data-delay="0.2s">
+                        <div class="step-number">02</div>
+                        <div class="step-content">
+                            <h3>Monte Carlo Simulation</h3>
+                            <p>Thousands of stochastic growth paths simulated using geometric Brownian motion</p>
+                            <div class="equation">
+                                <code>PPP<sub>t+1</sub> = PPP<sub>t</sub> × (1 + μ + σε)</code>
+                                <div class="equation-vars">
+                                    <span>μ = 5.5% + ∑(αᵢ × Interventionᵢ)</span>
+                                    <span>σ = 2.0% - ∑(βᵢ × Interventionᵢ)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="step animate__animated animate__fadeInLeft" data-delay="0.3s">
+                        <div class="step-number">03</div>
+                        <div class="step-content">
+                            <h3>Probability Calculation</h3>
+                            <p>Probability computed as proportion of simulations reaching target</p>
+                            <div class="probability-formula">
+                                <div class="formula">
+                                    P(PPP ≥ 7000) = 
+                                    <div class="fraction">
+                                        <span class="numerator"># simulations with PPP ≥ 7000</span>
+                                        <span class="denominator">total # simulations</span>
+                                    </div>
+                                </div>
+                                <div class="formula-example">
+                                    Example: 750 of 1,000 simulations = 75% probability
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="step animate__animated animate__fadeInLeft" data-delay="0.4s">
+                        <div class="step-number">04</div>
+                        <div class="step-content">
+                            <h3>AI Optimization</h3>
+                            <p>Multi-objective optimization under budget constraints</p>
+                            <div class="optimization-visual">
+                                <div class="opt-goal">
+                                    <i class="fas fa-bullseye"></i>
+                                    <span>Maximize Probability</span>
+                                </div>
+                                <div class="opt-constraint">
+                                    <i class="fas fa-coins"></i>
+                                    <span>Budget ≤ 60 units</span>
+                                </div>
+                                <div class="opt-constraint">
+                                    <i class="fas fa-balance-scale"></i>
+                                    <span>0 ≤ Intervention ≤ 1</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="methodology-visual animate__animated animate__fadeInRight">
+                    <div class="visual-card">
+                        <h3><i class="fas fa-project-diagram"></i> Model Architecture</h3>
+                        <div class="architecture">
+                            <div class="arch-layer">
+                                <div class="arch-icon"><i class="fas fa-sliders-h"></i></div>
+                                <div class="arch-content">
+                                    <h4>Intervention Inputs</h4>
+                                    <p>20+ policy levers (0-100 scale)</p>
+                                </div>
+                            </div>
+                            
+                            <div class="arch-arrow">↓</div>
+                            
+                            <div class="arch-layer">
+                                <div class="arch-icon"><i class="fas fa-cogs"></i></div>
+                                <div class="arch-content">
+                                    <h4>Monte Carlo Engine</h4>
+                                    <p>Stochastic growth simulation</p>
+                                </div>
+                            </div>
+                            
+                            <div class="arch-arrow">↓</div>
+                            
+                            <div class="arch-layer">
+                                <div class="arch-icon"><i class="fas fa-robot"></i></div>
+                                <div class="arch-content">
+                                    <h4>AI Optimizer</h4>
+                                    <p>Multi-objective optimization</p>
+                                </div>
+                            </div>
+                            
+                            <div class="arch-arrow">↓</div>
+                            
+                            <div class="arch-layer">
+                                <div class="arch-icon"><i class="fas fa-chart-bar"></i></div>
+                                <div class="arch-content">
+                                    <h4>Visualization</h4>
+                                    <p>Interactive dashboards</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-content animate__animated animate__fadeInUp">
+                <h2 class="cta-title">Ready to Transform Rwanda's Agriculture?</h2>
+                <p class="cta-description">
+                    Launch the interactive dashboard to simulate policy scenarios, 
+                    optimize intervention mixes, and visualize transformation pathways.
+                </p>
+                <div class="cta-actions">
+                    <a href="/dashboard" class="btn btn-primary btn-xl">
+                        <i class="fas fa-rocket"></i> Launch Full Dashboard
+                    </a>
+                    <a href="#features" class="btn btn-outline btn-xl">
+                        <i class="fas fa-book"></i> Read Documentation
+                    </a>
+                </div>
+                <div class="cta-stats">
+                    <div class="cta-stat">
+                        <i class="fas fa-clock"></i>
+                        <span>Real-time simulation</span>
+                    </div>
+                    <div class="cta-stat">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>No installation required</span>
+                    </div>
+                    <div class="cta-stat">
+                        <i class="fas fa-users"></i>
+                        <span>Built for policymakers</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="footer-logo">
+                        <span class="rwanda-flag">🇷🇼</span>
+                        <div class="footer-brand">
+                            <div class="footer-brand-main">Rwanda Agriculture</div>
+                            <div class="footer-brand-sub">Digital Twin</div>
+                        </div>
+                    </div>
+                    <p class="footer-description">
+                        AI-driven modeling platform for Rwanda's agricultural transformation to Vision 2050.
+                    </p>
+                    <div class="footer-social">
+                        <a href="#" class="social-link"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="social-link"><i class="fab fa-linkedin"></i></a>
+                        <a href="#" class="social-link"><i class="fab fa-github"></i></a>
+                        <a href="#" class="social-link"><i class="fas fa-envelope"></i></a>
+                    </div>
+                </div>
+                
+                <div class="footer-section">
+                    <h4 class="footer-title">Quick Links</h4>
+                    <div class="footer-links">
+                        <a href="/dashboard" class="footer-link">
+                            <i class="fas fa-dashboard"></i> Interactive Dashboard
+                        </a>
+                        <a href="#methodology" class="footer-link">
+                            <i class="fas fa-book"></i> Methodology
+                        </a>
+                        <a href="#features" class="footer-link">
+                            <i class="fas fa-star"></i> Features
+                        </a>
+                        <a href="#demo" class="footer-link">
+                            <i class="fas fa-eye"></i> Live Demo
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="footer-section">
+                    <h4 class="footer-title">Partners</h4>
+                    <div class="partners-grid">
+                        <div class="partner-logo">MINAGRI</div>
+                        <div class="partner-logo">REAF</div>
+                        <div class="partner-logo">NISR</div>
+                        <div class="partner-logo">RAB</div>
+                        <div class="partner-logo">MINECOFIN</div>
+                        <div class="partner-logo">RDB</div>
+                    </div>
+                </div>
+                
+                <div class="footer-section">
+                    <h4 class="footer-title">Contact</h4>
+                    <div class="contact-info">
+                        <div class="contact-item">
+                            <i class="fas fa-envelope"></i>
+                            <span>support@agritwin.gov.rw</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-phone"></i>
+                            <span>+250 788 123 456</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>Kigali, Rwanda</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <div class="footer-copyright">
+                    &copy; 2025 Rwanda Agriculture Digital Twin. All rights reserved.
+                </div>
+                <div class="footer-disclaimer">
+                    This tool is for policy simulation and planning purposes. 
+                    Results are based on statistical models and should be interpreted with appropriate context.
+                </div>
+                <div class="footer-legal">
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Terms of Use</a>
+                    <a href="#">Cookie Policy</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/js/home.js"></script>
+</body>
+</html>
