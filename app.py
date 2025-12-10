@@ -47,7 +47,8 @@ class MonteCarloEngine:
         np.random.seed(42)  # For reproducibility
         
         drift = self.base_growth_rate + np.dot(self.alpha, intervention_vector)
-        vol = max(0.004, self.base_volatility - np.dot(self.beta, intervention_vector))
+        # Increase volatility floor to preserve realistic uncertainty
+        vol = max(0.02, self.base_volatility - np.dot(self.beta, intervention_vector))
         
         results = []
         for _ in range(n_simulations):
@@ -103,26 +104,28 @@ INTERVENTIONS = [
 ]
 
 DEFAULT_TARGETS = {
-    "Land Consolidation": 80,
-    "Land Use Productivity": 85,
-    "Irrigation & Water Use Efficiency": 88,
-    "Climate Adaptation Index": 75,
-    "Staple Crop Productivity": 82,
-    "Cash Crop Productivity": 80,
-    "Livestock Productivity (Breed Improvement & Feeding Systems)": 83,
-    "Inputs Efficiency (fertilizer, seeds)": 80,
-    "Soil Health Indicators": 82,
-    "Mechanization": 78,
-    "Digital Agriculture Adoption": 85,
-    "R&D + Extension (AI-augmented advisory)": 88,
-    "Digital Twin simulations for plots & cooperatives": 85,
-    "Postharvest Loss (%)": 22,
-    "Storage/Processing Value Addition": 80,
-    "Access to Finance": 82,
-    "Insurance Penetration": 72,
-    "Domestic Market Integration": 85,
-    "Export Competitiveness": 82,
-    "Supply–Demand Stability Score (AI forecast model)": 87
+    # Lowered default target intensities to produce more realistic baseline
+    "Land Consolidation": 35,
+    "Land Use Productivity": 35,
+    "Irrigation & Water Use Efficiency": 35,
+    "Climate Adaptation Index": 35,
+    "Staple Crop Productivity": 35,
+    "Cash Crop Productivity": 35,
+    "Livestock Productivity (Breed Improvement & Feeding Systems)": 35,
+    "Inputs Efficiency (fertilizer, seeds)": 35,
+    "Soil Health Indicators": 35,
+    "Mechanization": 35,
+    "Digital Agriculture Adoption": 35,
+    "R&D + Extension (AI-augmented advisory)": 35,
+    "Digital Twin simulations for plots & cooperatives": 35,
+    # For Postharvest Loss (%), use a conservative default (higher loss = worse)
+    "Postharvest Loss (%)": 60,
+    "Storage/Processing Value Addition": 35,
+    "Access to Finance": 35,
+    "Insurance Penetration": 35,
+    "Domestic Market Integration": 35,
+    "Export Competitiveness": 35,
+    "Supply–Demand Stability Score (AI forecast model)": 35
 }
 
 # ==================== HELPER FUNCTIONS ====================
@@ -190,9 +193,33 @@ def index():
 
 @app.route('/dashboard')
 def dashboard():
+    # Build a structured interventions list to drive the dashboard sliders
+    categories = [
+        'land_water', 'land_water', 'land_water', 'land_water',
+        'productivity', 'productivity', 'productivity', 'productivity',
+        'productivity', 'productivity', 'technology', 'technology',
+        'technology', 'value_chain', 'value_chain', 'finance_risk',
+        'finance_risk', 'value_chain', 'value_chain', 'technology'
+    ]
+
+    units = [
+        '%', '%', '%', 'index', '%', '%', '%', '%', 'index', '%',
+        '%', '%', '%', '%', '%', '%', '%', '%', '%', 'index'
+    ]
+
+    intervention_objects = []
+    for i, name in enumerate(INTERVENTIONS):
+        intervention_objects.append({
+            'id': i,
+            'name': name,
+            'baseline': DEFAULT_TARGETS.get(name, 50),
+            'category': categories[i] if i < len(categories) else 'other',
+            'unit': units[i] if i < len(units) else '%'
+        })
+
     return render_template('dashboard.html', 
-                          interventions=INTERVENTIONS, 
-                          defaults=DEFAULT_TARGETS)
+                          interventions=intervention_objects, 
+                          default_targets=DEFAULT_TARGETS)
 
 @app.route('/api/projection', methods=['POST'])
 def projection():
@@ -219,6 +246,24 @@ def projection():
             'chart': chart
         })
         
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/model-params')
+def model_params():
+    """Return model parameters (alpha, beta, base rates) for client-side estimator"""
+    try:
+        return jsonify({
+            'base_year': mc_engine.base_year,
+            'target_year': mc_engine.target_year,
+            'base_ag_ppp': mc_engine.base_ag_ppp,
+            'target_ag_ppp': mc_engine.target_ag_ppp,
+            'base_growth_rate': mc_engine.base_growth_rate,
+            'base_volatility': mc_engine.base_volatility,
+            'alpha': mc_engine.alpha.tolist(),
+            'beta': mc_engine.beta.tolist()
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

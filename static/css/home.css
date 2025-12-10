@@ -872,7 +872,8 @@
 
 /* Footer */
 .footer {
-    background: var(--dark);
+    /* Use defined color variables with a fallback to --info-color */
+    background: var(--dark, var(--info-color));
     color: white;
     padding: 80px 0 40px;
 }
@@ -1043,7 +1044,7 @@
         top: 100%;
         left: 0;
         right: 0;
-        background: white;
+        background: rgb(142, 192, 189);
         flex-direction: column;
         padding: 20px;
         box-shadow: 0 10px 20px rgba(0,0,0,0.1);

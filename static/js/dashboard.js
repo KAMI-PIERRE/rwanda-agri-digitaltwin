@@ -9,17 +9,51 @@ class Dashboard {
         this.optimizationResults = null;
         this.isLoading = false;
         
+        // Local model parameters (mirror of server-side Monte Carlo coefficients)
+        this.base_year = 2025;
+        this.target_year_default = 2050;
+        this.base_ag_ppp = 803;
+        this.target_ag_ppp = 7000;
+        this.base_growth_rate = 0.055;
+        this.base_volatility = 0.02;
+
+        // Alpha & Beta arrays must match server-side ordering in `app.py`
+        this.alpha = [
+            0.011, 0.013, 0.016, 0.012, 0.015, 0.015, 0.015, 0.012, 0.013,
+            0.015, 0.014, 0.014, 0.010, 0.013, 0.014, 0.011, 0.011,
+            0.014, 0.016, 0.015
+        ];
+
+        this.beta = [
+            0.006, 0.005, 0.007, 0.012, 0.005, 0.005, 0.007, 0.006, 0.005,
+            0.006, 0.007, 0.007, 0.009, 0.011, 0.005, 0.005, 0.011,
+            0.007, 0.005, 0.013
+        ];
+
+        // Map intervention name -> index (populated when loading sliders)
+        this.interventionIndex = {};
+
         // Initialize dashboard
         this.init();
     }
     
     // Initialize dashboard
     init() {
-        this.loadInterventions();
-        this.bindEvents();
-        this.setupDefaultValues();
-        this.runInitialSimulation();
-        this.updateTime();
+        // Fetch model params from server to stay in sync with backend
+        this.fetchModelParams().then(() => {
+            this.loadInterventions();
+            this.bindEvents();
+            this.setupDefaultValues();
+            this.runInitialSimulation();
+            this.updateTime();
+        }).catch((err) => {
+            console.warn('Could not fetch model params, falling back to built-in values.', err);
+            this.loadInterventions();
+            this.bindEvents();
+            this.setupDefaultValues();
+            this.runInitialSimulation();
+            this.updateTime();
+        });
         
         // Update time every second
         setInterval(() => this.updateTime(), 1000);
@@ -34,6 +68,8 @@ class Dashboard {
             const value = parseInt(slider.value);
             
             this.interventions[name] = value;
+            // store index mapping for client-side estimator
+            this.interventionIndex[name] = parseInt(id);
             
             // Update value display
             const valueDisplay = document.getElementById(`value-${id}`);
@@ -42,24 +78,61 @@ class Dashboard {
             }
         });
     }
+
+    // Fetch model parameters from the server for consistency
+    async fetchModelParams() {
+        try {
+            const resp = await fetch('/api/model-params');
+            if (!resp.ok) throw new Error('Failed to fetch model params');
+            const data = await resp.json();
+            if (data.error) throw new Error(data.error);
+
+            // Assign values if present
+            if (data.alpha && data.beta) {
+                this.alpha = data.alpha;
+                this.beta = data.beta;
+            }
+            if (data.base_growth_rate !== undefined) this.base_growth_rate = data.base_growth_rate;
+            if (data.base_volatility !== undefined) this.base_volatility = data.base_volatility;
+            if (data.base_ag_ppp !== undefined) this.base_ag_ppp = data.base_ag_ppp;
+            if (data.target_ag_ppp !== undefined) this.target_ag_ppp = data.target_ag_ppp;
+            if (data.base_year !== undefined) this.base_year = data.base_year;
+            if (data.target_year !== undefined) this.target_year_default = data.target_year;
+        } catch (err) {
+            console.error('Error fetching model params:', err);
+            throw err;
+        }
+    }
     
     // Bind event listeners
     bindEvents() {
         // Slider changes
+        // Create a debounced automatic simulation runner so adjusting sliders updates
+        // the probability without spamming the API on every tiny change.
+        const debouncedRun = Utils.debounce(() => this.runSimulation(true), 800);
         document.querySelectorAll('.intervention-slider').forEach(slider => {
             slider.addEventListener('input', (e) => {
                 const id = e.target.id.replace('slider-', '');
                 const value = parseInt(e.target.value);
                 const name = e.target.dataset.name;
-                
+
                 // Update value display
                 const valueDisplay = document.getElementById(`value-${id}`);
                 if (valueDisplay) {
                     valueDisplay.textContent = value;
                 }
-                
+
                 // Update interventions object
                 this.interventions[name] = value;
+
+                // Immediately update quick client-side estimate for responsiveness
+                const instantProb = this.estimateProbabilityLocal();
+                if (instantProb !== null) {
+                    this.updateProbabilityUI(instantProb);
+                }
+
+                // Auto-run a silent simulation after user stops adjusting sliders
+                debouncedRun();
             });
         });
         
@@ -167,9 +240,12 @@ class Dashboard {
     
     // Run Monte Carlo simulation
     async runSimulation() {
+        // allow silent calls (e.g., from slider input) by accepting an optional
+        // boolean: runSimulation(silent=true). Default: false.
+        const silent = (arguments.length > 0 && arguments[0] === true) ? true : false;
         if (this.isLoading) return;
-        
-        this.setLoading(true);
+
+        this.setLoading(true, silent);
         
         try {
             // Get simulation parameters
@@ -218,12 +294,12 @@ class Dashboard {
             // Update probability ring
             chartManager.updateProbabilityRing(data.results.probability);
             
-            // Show success notification
-            Utils.showNotification('Simulation completed successfully!', 'success');
+            // Show success notification only when not silent
+            if (!silent) Utils.showNotification('Simulation completed successfully!', 'success');
             
         } catch (error) {
             console.error('Simulation error:', error);
-            Utils.showNotification(`Simulation failed: ${error.message}`, 'error');
+            if (!silent) Utils.showNotification(`Simulation failed: ${error.message}`, 'error');
             
             // Show fallback results for demo
             this.showFallbackResults();
@@ -350,12 +426,144 @@ class Dashboard {
         if (interpretation) {
             interpretation.textContent = Utils.getProbabilityDescription(results.probability);
         }
+
+        // Final result just arrived from server — mark source as final
+        this._setProbabilitySource('final');
         
         // Update quantiles if available
         if (results.quantiles) {
             document.getElementById('p5-value').textContent = Utils.formatCurrency(results.quantiles.p5);
             document.getElementById('p50-value').textContent = Utils.formatCurrency(results.quantiles.p50);
             document.getElementById('p95-value').textContent = Utils.formatCurrency(results.quantiles.p95);
+        }
+    }
+
+    // Update only the probability-related UI elements (fast, used by estimator)
+    updateProbabilityUI(probability) {
+        try {
+            const probabilityPercent = (probability * 100).toFixed(1);
+            const probValueEl = document.getElementById('probability-value');
+            const probBadgeEl = document.getElementById('probability-badge');
+
+            if (probValueEl) probValueEl.textContent = probabilityPercent;
+            if (probBadgeEl) probBadgeEl.textContent = probabilityPercent + '%';
+
+            const probabilityClass = Utils.getProbabilityClass(probability);
+            if (probValueEl) probValueEl.className = probabilityClass;
+            if (probBadgeEl) probBadgeEl.className = 'probability-badge ' + probabilityClass;
+
+            // Update interpretation text
+            const interpretation = document.getElementById('interpretation-text');
+            if (interpretation) {
+                interpretation.textContent = Utils.getProbabilityDescription(probability);
+            }
+
+            // Show a small source indicator (estimate vs final)
+            this._setProbabilitySource('estimate');
+
+            // Update visual ring if chartManager exists
+            if (typeof chartManager !== 'undefined' && chartManager.updateProbabilityRing) {
+                chartManager.updateProbabilityRing(probability);
+            }
+        } catch (err) {
+            console.error('Failed to update probability UI:', err);
+        }
+    }
+
+    // Quick client-side probability estimator using a log-normal approximation
+    estimateProbabilityLocal() {
+        try {
+            // Build intervention vector in server order (0-1), inverting Postharvest Loss
+            const vec = new Array(this.alpha.length).fill(0);
+            Object.entries(this.interventions).forEach(([name, val]) => {
+                const idx = this.interventionIndex[name];
+                if (typeof idx === 'number' && idx >= 0 && idx < vec.length) {
+                    let effective = val;
+                    if (name === 'Postharvest Loss (%)') {
+                        effective = 100 - val;
+                    }
+                    vec[idx] = effective / 100.0;
+                }
+            });
+
+            // Compute drift and volatility (mirror of server)
+            const dotAlpha = vec.reduce((s, v, i) => s + v * (this.alpha[i] || 0), 0);
+            const dotBeta = vec.reduce((s, v, i) => s + v * (this.beta[i] || 0), 0);
+
+            const mu = this.base_growth_rate + dotAlpha; // per-year drift
+            const sigma = Math.max(0.004, this.base_volatility - dotBeta); // per-year vol
+
+            const targetYearEl = document.getElementById('target-year');
+            const targetYear = targetYearEl ? parseInt(targetYearEl.value) : this.target_year_default;
+            const T = Math.max(1, targetYear - this.base_year);
+
+            // If volatility is extremely small, use deterministic check
+            if (sigma < 1e-6) {
+                const deterministic = this.base_ag_ppp * Math.pow(1 + mu, T);
+                return deterministic >= this.target_ag_ppp ? 1.0 : 0.0;
+            }
+
+            // Lognormal approximation: ln(S_T/S0) ~ N((mu - 0.5 sigma^2)T, sigma^2 T)
+            const lnRatio = Math.log(this.target_ag_ppp / this.base_ag_ppp);
+            const mean = (mu - 0.5 * sigma * sigma) * T;
+            const std = sigma * Math.sqrt(T);
+            const z = (lnRatio - mean) / std;
+
+            // P(S_T >= target) = 1 - Phi(z)
+            const cdf = this._normCdf(z);
+            const prob = Math.max(0, Math.min(1, 1 - cdf));
+            return prob;
+        } catch (err) {
+            console.error('Estimator error:', err);
+            return null;
+        }
+    }
+
+    // Standard normal CDF using erf approximation
+    _normCdf(x) {
+        return 0.5 * (1 + this._erf(x / Math.SQRT2));
+    }
+
+    // erf approximation (numerical)
+    _erf(x) {
+        // Abramowitz and Stegun formula 7.1.26
+        const sign = x >= 0 ? 1 : -1;
+        const a1 =  0.254829592;
+        const a2 = -0.284496736;
+        const a3 =  1.421413741;
+        const a4 = -1.453152027;
+        const a5 =  1.061405429;
+        const p  =  0.3275911;
+        const absX = Math.abs(x);
+        const t = 1.0 / (1.0 + p * absX);
+        const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-absX * absX);
+        return sign * y;
+    }
+
+    // Manage probability source indicator in the UI
+    _setProbabilitySource(source) {
+        try {
+            // Allowed sources: 'estimate' or 'final'
+            let badge = document.getElementById('probability-source');
+            if (!badge) {
+                // create a small badge next to probability-badge
+                const probBadge = document.getElementById('probability-badge');
+                if (!probBadge) return;
+                badge = document.createElement('span');
+                badge.id = 'probability-source';
+                badge.style.cssText = 'margin-left:8px;font-size:0.8rem;color:#666';
+                probBadge.parentNode.insertBefore(badge, probBadge.nextSibling);
+            }
+
+            if (source === 'estimate') {
+                badge.textContent = '(estimate)';
+                badge.style.opacity = '0.9';
+            } else {
+                badge.textContent = '(final)';
+                badge.style.opacity = '1';
+            }
+        } catch (err) {
+            console.error('Failed to set probability source badge:', err);
         }
     }
     
@@ -527,9 +735,9 @@ class Dashboard {
     }
     
     // Set loading state
-    setLoading(isLoading) {
+    setLoading(isLoading, suppressNotification = false) {
         this.isLoading = isLoading;
-        
+
         const buttons = document.querySelectorAll('#run-simulation, #run-optimization');
         buttons.forEach(btn => {
             if (isLoading) {
@@ -540,8 +748,8 @@ class Dashboard {
                 btn.disabled = false;
             }
         });
-        
-        if (isLoading) {
+
+        if (isLoading && !suppressNotification) {
             Utils.showNotification('Running simulation...', 'info', 2000);
         }
     }
