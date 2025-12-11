@@ -76,6 +76,8 @@ class Dashboard {
             if (valueDisplay) {
                 valueDisplay.textContent = value;
             }
+            // Set slider gradient color on load
+            this._setSliderGradient(slider);
         });
     }
 
@@ -124,6 +126,12 @@ class Dashboard {
 
                 // Update interventions object
                 this.interventions[name] = value;
+
+                // Mark as custom scenario (not baseline) when user adjusts
+                this._setScenarioLabel('Custom scenario');
+
+                // Update slider gradient as the user moves
+                this._setSliderGradient(e.target);
 
                 // Immediately update quick client-side estimate for responsiveness
                 const instantProb = this.estimateProbabilityLocal();
@@ -467,6 +475,54 @@ class Dashboard {
             }
         } catch (err) {
             console.error('Failed to update probability UI:', err);
+        }
+    }
+
+    // Set a red->green gradient on a range input based on its value (0-100)
+    _setSliderGradient(slider) {
+        try {
+            let val = parseInt(slider.value || 0);
+            // Reverse mapping for Postharvest Loss: higher slider means worse (more loss)
+            const name = slider.dataset && slider.dataset.name ? slider.dataset.name : '';
+            if (name === 'Postharvest Loss (%)') {
+                val = 100 - val;
+            }
+
+            const pct = Math.max(0, Math.min(100, val));
+
+            // Compute color: red -> yellow -> green
+            const lerp = (a, b, t) => ({
+                r: Math.round(a.r + (b.r - a.r) * t),
+                g: Math.round(a.g + (b.g - a.g) * t),
+                b: Math.round(a.b + (b.b - a.b) * t)
+            });
+
+            const toRgb = (hex) => {
+                const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return m ? { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) } : { r: 0, g: 0, b: 0 };
+            };
+
+            const hex = (c) => `rgb(${c.r}, ${c.g}, ${c.b})`;
+
+            const red = toRgb('#E76F51');
+            const yellow = toRgb('#F18F01');
+            const green = toRgb('#2A9D8F');
+
+            let color;
+            if (pct <= 50) {
+                const t = pct / 50;
+                color = lerp(red, yellow, t);
+            } else {
+                const t = (pct - 50) / 50;
+                color = lerp(yellow, green, t);
+            }
+
+            const colorStr = hex(color);
+
+            // Fill left portion with computed color, remaining with track gray
+            slider.style.background = `linear-gradient(90deg, ${colorStr} 0%, ${colorStr} ${pct}%, #e9ecef ${pct}%, #e9ecef 100%)`;
+        } catch (err) {
+            console.error('Failed to set slider gradient:', err);
         }
     }
 
@@ -916,6 +972,14 @@ class Dashboard {
                 pane.classList.add('active');
             }
         });
+    }
+
+    // Update scenario label (baseline vs custom)
+    _setScenarioLabel(label) {
+        const subtitle = document.getElementById('probability-subtitle');
+        if (subtitle) {
+            subtitle.textContent = label;
+        }
     }
 }
 

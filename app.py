@@ -26,6 +26,11 @@ class MonteCarloEngine:
         self.target_ag_ppp = 7000
         self.base_growth_rate = 0.055
         self.base_volatility = 0.02
+        # Calibration knobs
+        # Calibrated alpha_scale to target ≈80% probability when all interventions = 100%
+        self.alpha_scale = 0.1750  # calibrated via binary search to yield 80% at full implementation
+        self.beta_scale = 1.0
+        self.volatility_floor = 0.05  # high floor ensures significant uncertainty
         
         # Alpha & Beta coefficients (20 interventions)
         self.alpha = np.array([
@@ -46,9 +51,13 @@ class MonteCarloEngine:
         """Run Monte Carlo simulation"""
         np.random.seed(42)  # For reproducibility
         
-        drift = self.base_growth_rate + np.dot(self.alpha, intervention_vector)
-        # Increase volatility floor to preserve realistic uncertainty
-        vol = max(0.02, self.base_volatility - np.dot(self.beta, intervention_vector))
+        # Apply scaling to alpha/beta for calibration
+        effective_alpha = self.alpha * self.alpha_scale
+        effective_beta = self.beta * self.beta_scale
+
+        drift = self.base_growth_rate + np.dot(effective_alpha, intervention_vector)
+        # Use configured volatility floor to keep uncertainty realistic
+        vol = max(self.volatility_floor, self.base_volatility - np.dot(effective_beta, intervention_vector))
         
         results = []
         for _ in range(n_simulations):
@@ -261,6 +270,9 @@ def model_params():
             'target_ag_ppp': mc_engine.target_ag_ppp,
             'base_growth_rate': mc_engine.base_growth_rate,
             'base_volatility': mc_engine.base_volatility,
+            'alpha_scale': mc_engine.alpha_scale,
+            'beta_scale': mc_engine.beta_scale,
+            'volatility_floor': mc_engine.volatility_floor,
             'alpha': mc_engine.alpha.tolist(),
             'beta': mc_engine.beta.tolist()
         })

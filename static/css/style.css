@@ -324,6 +324,34 @@ input[type="range"]::-moz-range-thumb {
     box-shadow: var(--shadow-sm);
 }
 
+/* Intervention slider specific styles */
+.intervention-slider {
+    height: 8px;
+    background: linear-gradient(90deg, #E76F51 0%, #E76F51 50%, #2A9D8F 50%, #2A9D8F 100%);
+    border-radius: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.intervention-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    border: 2px solid rgba(0,0,0,0.12);
+    box-shadow: var(--shadow-sm);
+}
+
+.intervention-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    border: 2px solid rgba(0,0,0,0.12);
+    box-shadow: var(--shadow-sm);
+}
+
 /* ===== UTILITY CLASSES ===== */
 .container {
     width: 100%;
