@@ -278,16 +278,21 @@ class ChartManager {
         const circumference = 502.4;
         const offset = circumference - (probability * circumference);
         
+        // Get color based on probability
+        const color = this.getProbabilityColor(probability);
+        
         // Update ring
         ring.style.strokeDashoffset = offset;
-        ring.style.stroke = this.getProbabilityColor(probability);
+        ring.style.stroke = color;
         
         // Update text
         const percent = (probability * 100).toFixed(1);
         probabilityValue.textContent = percent;
         probabilityValue.className = Utils.getProbabilityClass(probability);
+        probabilityValue.style.color = color;
         probabilityBadge.textContent = percent + '%';
         probabilityBadge.className = 'probability-badge ' + Utils.getProbabilityClass(probability);
+        probabilityBadge.style.color = color;
         
         // Update interpretation
         const interpretation = document.getElementById('interpretation-text');
@@ -296,11 +301,36 @@ class ChartManager {
         }
     }
 
-    // Get color based on probability
+    // Get color based on probability (red->yellow->green gradient)
     getProbabilityColor(probability) {
-        if (probability >= 0.8) return this.colors.success;
-        if (probability >= 0.5) return this.colors.warning;
-        return this.colors.danger;
+        const toRgb = (hex) => {
+            const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return m ? { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) } : { r: 0, g: 0, b: 0 };
+        };
+
+        const lerp = (a, b, t) => ({
+            r: Math.round(a.r + (b.r - a.r) * t),
+            g: Math.round(a.g + (b.g - a.g) * t),
+            b: Math.round(a.b + (b.b - a.b) * t)
+        });
+
+        const hex = (c) => `rgb(${c.r}, ${c.g}, ${c.b})`;
+
+        const red = toRgb('#E74C3C');      // Darker red
+        const yellow = toRgb('#F39C12');   // Golden yellow
+        const green = toRgb('#27AE60');    // Darker green
+
+        const pct = Math.max(0, Math.min(1, probability));
+        let color;
+        if (pct <= 0.5) {
+            const t = pct / 0.5;
+            color = lerp(red, yellow, t);
+        } else {
+            const t = (pct - 0.5) / 0.5;
+            color = lerp(yellow, green, t);
+        }
+
+        return hex(color);
     }
 
     // Destroy all charts

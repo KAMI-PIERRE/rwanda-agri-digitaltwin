@@ -226,6 +226,7 @@
     font-size: 1.2rem;
     min-width: 80px;
     text-align: center;
+    transition: color 0.15s ease-out;
 }
 
 .probability-content {

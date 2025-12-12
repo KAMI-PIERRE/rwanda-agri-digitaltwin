@@ -45,18 +45,13 @@ class Dashboard {
             this.bindEvents();
             this.setupDefaultValues();
             this.runInitialSimulation();
-            this.updateTime();
         }).catch((err) => {
             console.warn('Could not fetch model params, falling back to built-in values.', err);
             this.loadInterventions();
             this.bindEvents();
             this.setupDefaultValues();
             this.runInitialSimulation();
-            this.updateTime();
         });
-        
-        // Update time every second
-        setInterval(() => this.updateTime(), 1000);
     }
     
     // Load interventions from the page
@@ -456,6 +451,11 @@ class Dashboard {
             if (probValueEl) probValueEl.textContent = probabilityPercent;
             if (probBadgeEl) probBadgeEl.textContent = probabilityPercent + '%';
 
+            // Apply color gradient to probability display
+            const color = this._getColorForProbability(probability);
+            if (probValueEl) probValueEl.style.color = color;
+            if (probBadgeEl) probBadgeEl.style.color = color;
+
             const probabilityClass = Utils.getProbabilityClass(probability);
             if (probValueEl) probValueEl.className = probabilityClass;
             if (probBadgeEl) probBadgeEl.className = 'probability-badge ' + probabilityClass;
@@ -478,7 +478,39 @@ class Dashboard {
         }
     }
 
-    // Set a red->green gradient on a range input based on its value (0-100)
+    // Helper to compute red->yellow->green color for a 0-1 probability value
+    _getColorForProbability(prob) {
+        const toRgb = (hex) => {
+            const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return m ? { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) } : { r: 0, g: 0, b: 0 };
+        };
+
+        const lerp = (a, b, t) => ({
+            r: Math.round(a.r + (b.r - a.r) * t),
+            g: Math.round(a.g + (b.g - a.g) * t),
+            b: Math.round(a.b + (b.b - a.b) * t)
+        });
+
+        const hex = (c) => `rgb(${c.r}, ${c.g}, ${c.b})`;
+
+        const red = toRgb('#E74C3C');      // Darker red for better visibility
+        const yellow = toRgb('#F39C12');   // Golden yellow
+        const green = toRgb('#27AE60');    // Darker green
+
+        const pct = Math.max(0, Math.min(1, prob));
+        let color;
+        if (pct <= 0.5) {
+            const t = pct / 0.5;
+            color = lerp(red, yellow, t);
+        } else {
+            const t = (pct - 0.5) / 0.5;
+            color = lerp(yellow, green, t);
+        }
+
+        return hex(color);
+    }
+
+    // Set a red->yellow->green gradient on a range input based on its value (0-100)
     _setSliderGradient(slider) {
         try {
             let val = parseInt(slider.value || 0);
@@ -490,37 +522,21 @@ class Dashboard {
 
             const pct = Math.max(0, Math.min(100, val));
 
-            // Compute color: red -> yellow -> green
-            const lerp = (a, b, t) => ({
-                r: Math.round(a.r + (b.r - a.r) * t),
-                g: Math.round(a.g + (b.g - a.g) * t),
-                b: Math.round(a.b + (b.b - a.b) * t)
-            });
-
-            const toRgb = (hex) => {
-                const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-                return m ? { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) } : { r: 0, g: 0, b: 0 };
-            };
-
-            const hex = (c) => `rgb(${c.r}, ${c.g}, ${c.b})`;
-
-            const red = toRgb('#E76F51');
-            const yellow = toRgb('#F18F01');
-            const green = toRgb('#2A9D8F');
-
-            let color;
-            if (pct <= 50) {
-                const t = pct / 50;
-                color = lerp(red, yellow, t);
-            } else {
-                const t = (pct - 50) / 50;
-                color = lerp(yellow, green, t);
-            }
-
-            const colorStr = hex(color);
+            // Use same color logic as probability display
+            const probValue = pct / 100;
+            const colorStr = this._getColorForProbability(probValue);
 
             // Fill left portion with computed color, remaining with track gray
             slider.style.background = `linear-gradient(90deg, ${colorStr} 0%, ${colorStr} ${pct}%, #e9ecef ${pct}%, #e9ecef 100%)`;
+
+            // Also color the slider value number the same color
+            const sliderItem = slider.closest('.slider-item');
+            if (sliderItem) {
+                const valueEl = sliderItem.querySelector('.slider-value');
+                if (valueEl) {
+                    valueEl.style.color = colorStr;
+                }
+            }
         } catch (err) {
             console.error('Failed to set slider gradient:', err);
         }
@@ -809,21 +825,7 @@ class Dashboard {
             Utils.showNotification('Running simulation...', 'info', 2000);
         }
     }
-    
-    // Update time display
-    updateTime() {
-        const now = new Date();
-        const timeString = now.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-        
-        const timeElement = document.getElementById('current-time');
-        if (timeElement) {
-            timeElement.textContent = timeString;
-        }
-    }
-    
+
     // Show help modal
     showHelp() {
         // Create help modal

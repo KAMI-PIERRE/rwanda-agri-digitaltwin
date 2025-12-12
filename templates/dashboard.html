@@ -20,10 +20,6 @@
             <p class="header-subtitle">Interactive Monte Carlo Simulation & AI Optimization for Vision 2050</p>
         </div>
         <div class="header-right">
-            <div class="time-display">
-                <i class="fas fa-clock"></i>
-                <span id="current-time">{{ now.strftime('%H:%M') }}</span>
-            </div>
             <button class="btn btn-outline" id="help-btn">
                 <i class="fas fa-question-circle"></i> Help
             </button>
@@ -175,7 +171,7 @@
                                         stroke-dasharray="502.4" stroke-dashoffset="502.4" transform="rotate(-90 90 90)"/>
                             </svg>
                             <div class="probability-text">
-                                <span id="probability-value">--</span>
+                                <span id="probability-value" style="font-weight: 600; transition: color 0.15s ease-out;">--</span>
                                 <span class="percent">%</span>
                             </div>
                         </div>
