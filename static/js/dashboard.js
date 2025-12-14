@@ -15,6 +15,7 @@ class Dashboard {
         this.base_ag_ppp = 803;
         this.target_ag_ppp = 7000;
         this.base_growth_rate = 0.055;
+        this.baseline_alpha = 0.02480;  // autonomous improvement component (calibrated for 45% at 35% interventions)
         this.base_volatility = 0.02;
 
         // Alpha & Beta arrays must match server-side ordering in `app.py`
@@ -90,6 +91,7 @@ class Dashboard {
                 this.beta = data.beta;
             }
             if (data.base_growth_rate !== undefined) this.base_growth_rate = data.base_growth_rate;
+            if (data.baseline_alpha !== undefined) this.baseline_alpha = data.baseline_alpha;
             if (data.base_volatility !== undefined) this.base_volatility = data.base_volatility;
             if (data.base_ag_ppp !== undefined) this.base_ag_ppp = data.base_ag_ppp;
             if (data.target_ag_ppp !== undefined) this.target_ag_ppp = data.target_ag_ppp;
@@ -562,7 +564,8 @@ class Dashboard {
             const dotAlpha = vec.reduce((s, v, i) => s + v * (this.alpha[i] || 0), 0);
             const dotBeta = vec.reduce((s, v, i) => s + v * (this.beta[i] || 0), 0);
 
-            const mu = this.base_growth_rate + dotAlpha; // per-year drift
+            // Drift includes baseline_alpha (autonomous improvement)
+            const mu = this.base_growth_rate + this.baseline_alpha + dotAlpha; // per-year drift
             const sigma = Math.max(0.004, this.base_volatility - dotBeta); // per-year vol
 
             const targetYearEl = document.getElementById('target-year');

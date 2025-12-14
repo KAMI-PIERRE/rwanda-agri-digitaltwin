@@ -24,11 +24,12 @@ class MonteCarloEngine:
         self.target_year = 2050
         self.base_ag_ppp = 803
         self.target_ag_ppp = 7000
-        self.base_growth_rate = 0.055
+        self.base_growth_rate = 0.055  # 5.5% baseline growth
         self.base_volatility = 0.02
         # Calibration knobs
-        # Calibrated alpha_scale to target ≈80% probability when all interventions = 100%
-        self.alpha_scale = 0.1750  # calibrated via binary search to yield 80% at full implementation
+        # baseline_alpha: additional growth rate applied even when no interventions (represents structural improvements)
+        self.baseline_alpha = 0.02480  # calibrated to achieve 45% at 35% baseline interventions
+        self.alpha_scale = 0.1100  # calibrated to yield ~90% at full implementation (realistic ceiling)
         self.beta_scale = 1.0
         self.volatility_floor = 0.05  # high floor ensures significant uncertainty
         
@@ -55,7 +56,8 @@ class MonteCarloEngine:
         effective_alpha = self.alpha * self.alpha_scale
         effective_beta = self.beta * self.beta_scale
 
-        drift = self.base_growth_rate + np.dot(effective_alpha, intervention_vector)
+        # Drift includes baseline_alpha (autonomous improvement) plus intervention contributions
+        drift = self.base_growth_rate + self.baseline_alpha + np.dot(effective_alpha, intervention_vector)
         # Use configured volatility floor to keep uncertainty realistic
         vol = max(self.volatility_floor, self.base_volatility - np.dot(effective_beta, intervention_vector))
         
@@ -74,7 +76,7 @@ class MonteCarloEngine:
             'probability': probability,
             'mean_ppp': float(np.mean(results_array)),
             'median_ppp': float(np.median(results_array)),
-            'distribution': results_array.tolist()[:1000],  # Limit for frontend
+            'distribution': results_array.tolist(),  # Send all data to frontend
             'quantiles': {
                 'p5': float(np.percentile(results_array, 5)),
                 'p25': float(np.percentile(results_array, 25)),
@@ -153,32 +155,41 @@ def interventions_to_vector(interventions):
     return np.array(vector)
 
 def generate_chart(distribution):
-    """Generate base64 encoded chart"""
-    fig, ax = plt.subplots(figsize=(10, 6))
+    """Generate base64 encoded chart with dense histogram"""
+    fig, ax = plt.subplots(figsize=(12, 7))
     
-    # Plot histogram
-    ax.hist(distribution, bins=40, alpha=0.7, color='#2E86AB', edgecolor='black')
+    # Plot histogram with more bins for denser visualization
+    n_bins = max(50, int(np.sqrt(len(distribution))))  # Adaptive bins based on data size
+    ax.hist(distribution, bins=n_bins, alpha=0.75, color='#2E86AB', edgecolor='#1a4d7a', linewidth=0.5)
     
     # Add target line
-    ax.axvline(x=7000, color='#E63946', linestyle='--', linewidth=2, label='Target: $7,000')
+    ax.axvline(x=7000, color='#E63946', linestyle='--', linewidth=2.5, label='Target: $7,000', zorder=10)
     
     # Add mean line
     mean_val = np.mean(distribution)
-    ax.axvline(x=mean_val, color='#457B9D', linestyle='-', linewidth=1.5, alpha=0.8)
+    ax.axvline(x=mean_val, color='#457B9D', linestyle='-', linewidth=2, alpha=0.9, label=f'Mean: ${mean_val:,.0f}', zorder=9)
+    
+    # Add median line
+    median_val = np.median(distribution)
+    ax.axvline(x=median_val, color='#F4A261', linestyle=':', linewidth=2, alpha=0.8, label=f'Median: ${median_val:,.0f}', zorder=8)
     
     # Styling
-    ax.set_xlabel('Agriculture PPP per Capita (International $)', fontsize=12)
-    ax.set_ylabel('Frequency', fontsize=12)
-    ax.set_title('Monte Carlo Simulation Results - 2050 Projection', fontsize=14)
-    ax.grid(True, alpha=0.3)
-    ax.legend()
+    ax.set_xlabel('Agriculture PPP per Capita (International $)', fontsize=13, fontweight='bold')
+    ax.set_ylabel('Frequency (Number of Simulations)', fontsize=13, fontweight='bold')
+    ax.set_title('Monte Carlo Simulation Results - 2050 Projection', fontsize=15, fontweight='bold', pad=20)
+    ax.grid(True, alpha=0.3, linestyle='--')
+    ax.legend(fontsize=11, loc='upper left', framealpha=0.95)
     
-    # Add probability annotation
+    # Format x-axis with dollar signs
+    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'${x:,.0f}'))
+    
+    # Add probability annotation with better styling
     prob = np.mean(np.array(distribution) >= 7000) * 100
-    ax.text(0.02, 0.98, f'Probability ≥ $7,000: {prob:.1f}%', 
+    stats_text = f'Success Rate: {prob:.1f}%\nSimulations: {len(distribution):,}'
+    ax.text(0.98, 0.97, stats_text, 
             transform=ax.transAxes, fontsize=11, fontweight='bold',
-            verticalalignment='top',
-            bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+            verticalalignment='top', horizontalalignment='right',
+            bbox=dict(boxstyle='round', facecolor='white', alpha=0.9, edgecolor='#2E86AB', linewidth=1.5))
     
     plt.tight_layout()
     
@@ -186,6 +197,8 @@ def generate_chart(distribution):
     buf = BytesIO()
     plt.savefig(buf, format='png', dpi=100, bbox_inches='tight')
     plt.close(fig)
+    buf.seek(0)
+    return base64.b64encode(buf.read()).decode('utf-8')
     buf.seek(0)
     return base64.b64encode(buf.read()).decode('utf-8')
 
@@ -269,6 +282,7 @@ def model_params():
             'base_ag_ppp': mc_engine.base_ag_ppp,
             'target_ag_ppp': mc_engine.target_ag_ppp,
             'base_growth_rate': mc_engine.base_growth_rate,
+            'baseline_alpha': mc_engine.baseline_alpha,
             'base_volatility': mc_engine.base_volatility,
             'alpha_scale': mc_engine.alpha_scale,
             'beta_scale': mc_engine.beta_scale,

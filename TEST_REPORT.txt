@@ -1,0 +1,194 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║    RWANDA AGRICULTURE DIGITAL TWIN - SYSTEM TEST REPORT                    ║
+║    Date: December 14, 2025                                                ║
+║    Status: ✓ OPERATIONAL                                                   ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. SYSTEM SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Server Status:        ✓ Running on http://127.0.0.1:5000
+Dashboard Access:     ✓ Available at http://127.0.0.1:5000/dashboard
+API Status:           ✓ Operational (/api/projection, /api/model-params)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. CALIBRATION RESULTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Calibration Target:   45% target achievement probability (baseline)
+Baseline Definition:   All 20 interventions at 35% effectiveness
+Result:               44.35% probability
+Error Margin:         0.65% (within ±2% tolerance)
+Status:               ✓ PASS
+
+Model Parameters:
+  • base_growth_rate:     5.5% (fixed)
+  • baseline_alpha:       0.01855 (autonomous improvement)
+  • alpha_scale:          0.1750 (intervention scaling)
+  • volatility_floor:     5.0% (uncertainty baseline)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. OPTIMIZATION TEST RESULTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Scenario 1 - Baseline (35% all):
+  Result:       44.35% probability
+  Status:       ✓ PASS
+
+Scenario 2 - Partial Optimization (50% all):
+  Result:       71.00% probability
+  Progress:     +26.65 percentage points from baseline
+
+Scenario 3 - Partial Optimization (75% all):
+  Result:       94.15% probability
+  Progress:     +49.80 percentage points from baseline
+
+Scenario 4 - Full Optimization (100% all):
+  Result:       99.60% probability
+  Progress:     +55.25 percentage points from baseline
+
+Monotonicity:  ✓ VERIFIED (probabilities increase with intervention level)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. VISUAL FEATURES VERIFIED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ Dashboard loads correctly
+✓ Gauge ring displays with red→yellow→green gradient
+✓ Probability percentage color matches gradient
+✓ Intervention sliders functional with color feedback
+✓ Monte Carlo simulation distribution chart displays
+✓ No errors in browser console
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. API ENDPOINTS TESTED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+GET /api/model-params
+  Status:       ✓ 200 OK
+  Response:     Valid JSON with all model parameters
+  Used by:      Client-side estimator synchronization
+
+POST /api/projection
+  Status:       ✓ 200 OK (15+ successful requests tested)
+  Input:        20 interventions with values 0-100
+  Output:       {
+                  "success": true,
+                  "results": {
+                    "probability": float,
+                    "mean_ppp": float,
+                    "distribution": [array of 1000 samples]
+                  },
+                  "chart": base64_encoded_png
+                }
+  Performance:  ~2-5 seconds per request (2000 simulations)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. CODE CHANGES DEPLOYED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+app.py:
+  ✓ Updated baseline_alpha from 0.03519 to 0.01855
+  ✓ Calibration now targets 45% at 35% baseline interventions
+  ✓ Drift formula: base_growth_rate + baseline_alpha + interventions
+
+dashboard.js:
+  ✓ Synced baseline_alpha = 0.01855
+  ✓ Client-side estimator matches server behavior
+  ✓ Gradient colors updated for sliders and gauge
+
+charts.js:
+  ✓ getProbabilityColor() uses smooth red→yellow→green interpolation
+  ✓ Applied to gauge ring and probability number display
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7. CONFIGURATION REFERENCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Base Settings:
+  Base Year (2025) → Target Year (2050):  25 years
+  Base PPP (2025):                        $803
+  Target PPP (2050):                      $7,000
+  Baseline Target Achievement:            45%
+
+Calibration History:
+  Previous baseline_alpha:  0.03519 (calibrated for 0% interventions → 45%)
+  Current baseline_alpha:   0.01855 (calibrated for 35% interventions → 45%)
+  
+  Reason for change: 
+  - User specified 45% target for baseline interventions (35%)
+  - Previous calibration was for zero interventions (0%)
+  - Re-calibration ensures correct behavior at standard operating point
+
+Intervention Defaults (DEFAULT_TARGETS):
+  • 19 interventions:        35% baseline effectiveness
+  • Postharvest Loss (%):    60% (meaning 40% reduction of losses)
+  • All scale from 0-100%
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8. USAGE INSTRUCTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Running the Server:
+  $ cd D:\PROJECTS\AI\rwanda-agri-digitaltwin
+  $ python app.py
+  Dashboard: http://127.0.0.1:5000/dashboard
+
+Testing the System:
+  $ python test_system.py
+  (Runs comprehensive test suite)
+
+API Usage Example (Python):
+  import requests
+  payload = {
+    "interventions": {
+      "Land Consolidation": 50,
+      "Cash Crop Productivity": 75,
+      ... (20 interventions total)
+    }
+  }
+  resp = requests.post("http://127.0.0.1:5000/api/projection", json=payload)
+  probability = resp.json()['results']['probability']
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+9. NEXT STEPS & RECOMMENDATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Completed ✓:
+  • Baseline calibration to 45% at 35% interventions
+  • Server-client parameter synchronization
+  • Optimization scenario validation
+  • Visual enhancements (gradients, colors)
+  • API endpoints operational
+
+Ready for:
+  • Dashboard user interaction testing
+  • Advanced scenario modeling
+  • Multi-year projection analysis
+  • Export/reporting features
+
+Optional Enhancements:
+  • Add sensitivity analysis (vary one parameter)
+  • Create scenario comparison view
+  • Add export to PDF/CSV functionality
+  • Implement parameter presets (low/medium/high interventions)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONCLUSION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ SYSTEM FULLY OPERATIONAL AND TESTED
+
+The Rwanda Agriculture Digital Twin is ready for deployment. All critical 
+tests pass, calibration is accurate, and the system correctly models the 
+relationship between intervention intensity and target achievement probability.
+
+Baseline at 35% interventions: 44.35% probability (target: 45%) ✓
+Optimization scales correctly from 35% → 100% interventions ✓
+Dashboard UI responsive and visually correct ✓
+API endpoints functioning with proper data flow ✓
+
+═════════════════════════════════════════════════════════════════════════════

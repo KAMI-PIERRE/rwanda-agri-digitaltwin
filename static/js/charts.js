@@ -33,8 +33,8 @@ class ChartManager {
         const p50 = sorted[Math.floor(data.length * 0.50)];
         const p95 = sorted[Math.floor(data.length * 0.95)];
         
-        // Create histogram data
-        const binCount = 40;
+        // Create histogram with very many bins to show density of all 2000 outcomes
+        const binCount = Math.max(150, Math.ceil(data.length / 15)); // Very dense: ~150+ bins for 2000 data points
         const min = Math.min(...data);
         const max = Math.max(...data);
         const binSize = (max - min) / binCount;
@@ -54,12 +54,14 @@ class ChartManager {
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Frequency',
+                    label: `All ${data.length} Simulation Outcomes`,
                     data: bins,
-                    backgroundColor: this.colors.primary + '80',
+                    backgroundColor: this.colors.primary + '95',
                     borderColor: this.colors.primary,
-                    borderWidth: 1,
-                    borderRadius: 4
+                    borderWidth: 0.2,
+                    borderRadius: 1,
+                    barPercentage: 1.0,  // No gap between bars
+                    categoryPercentage: 1.0
                 }]
             },
             options: {
@@ -67,7 +69,8 @@ class ChartManager {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        display: false
+                        display: true,
+                        position: 'top'
                     },
                     tooltip: {
                         callbacks: {
@@ -77,7 +80,7 @@ class ChartManager {
                                 return `$${start.toLocaleString()} - $${Math.round(end).toLocaleString()}`;
                             },
                             label: function(context) {
-                                return `Frequency: ${context.parsed.y}`;
+                                return `Count: ${context.parsed.y} simulations`;
                             }
                         }
                     }
@@ -99,7 +102,7 @@ class ChartManager {
                     y: {
                         title: {
                             display: true,
-                            text: 'Frequency',
+                            text: 'Frequency (Number of Simulations)',
                             font: {
                                 weight: 'bold',
                                 size: 12
