@@ -96,13 +96,13 @@ function setupPathwayVisualization() {
     
     const pathways = {
         current: {
-            subsistence: 48,
-            advanced: 1,
+            subsistence: 51,
+            advanced: 0.5,
             fillWidth: '48%'
         },
         target: {
-            subsistence: 5,
-            advanced: 40,
+            subsistence:0,
+            advanced: 20,
             fillWidth: '40%'
         }
     };

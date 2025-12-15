@@ -1,49 +1,87 @@
-<footer class="footer">
-    <div class="container">
-        <div class="footer-content">
-            <div class="footer-section">
-                <h4>Rwanda Agriculture Digital Twin</h4>
-                <p>AI-driven modeling platform for Rwanda's agricultural transformation to Vision 2050.</p>
-                <div class="footer-links">
-                    <a href="#privacy">Privacy Policy</a>
-                    <a href="#terms">Terms of Use</a>
-                    <a href="#contact">Contact</a>
+<!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <div class="footer-logo">
+                        <span class="rwanda-flag"></span>
+                        <div class="footer-brand">
+                            <div class="footer-brand-main">Rwanda Agriculture Digital Twin</div>
+                            <!-- <div class="footer-brand-main">Digital Twin</div> -->
+                        </div>
+                    </div>
+                    <p class="footer-description">
+                        AI-driven modeling platform for Rwanda's agricultural transformation to Vision 2050.
+                    </p>
+                    <div class="footer-social">
+                        <a href="#" class="social-link"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="social-link"><i class="fab fa-linkedin"></i></a>
+                        <a href="#" class="social-link"><i class="fab fa-github"></i></a>
+                        <a href="#" class="social-link"><i class="fas fa-envelope"></i></a>
+                    </div>
+                </div>
+                
+                <div class="footer-section">
+                    <h4 class="footer-title">Quick Links</h4>
+                    <div class="footer-links">
+                        <a href="/dashboard" class="footer-link">
+                            <i class="fas fa-dashboard"></i> Interactive Dashboard
+                        </a>
+                        <a href="#methodology" class="footer-link">
+                            <i class="fas fa-book"></i> Methodology
+                        </a>
+                        <a href="#features" class="footer-link">
+                            <i class="fas fa-star"></i> Features
+                        </a>
+                        <a href="#demo" class="footer-link">
+                            <i class="fas fa-eye"></i> Live Demo
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="footer-section">
+                    <h4 class="footer-title">Partners</h4>
+                    <div class="partners-grid">
+                        <div class="partner-logo">MINAGRI</div>
+                        <!-- <div class="partner-logo">REAF</div> -->
+                        <div class="partner-logo">NISR</div>
+                        <div class="partner-logo">RAB</div>
+                        <div class="partner-logo">MINECOFIN</div>
+                        <div class="partner-logo">RDB</div>
+                    </div>
+                </div>
+                
+                <div class="footer-section">
+                    <h4 class="footer-title">Contact</h4>
+                    <div class="contact-info">
+                        <div class="contact-item">
+                            <i class="fas fa-envelope"></i>
+                            <span>support@agriwealth.gov.rw</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-phone"></i>
+                            <span>+250 788 304 673</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>Kigali, Rwanda</span>
+                        </div>
+                    </div>
                 </div>
             </div>
             
-            <div class="footer-section">
-                <h4>Partners</h4>
-                <div class="partner-logos">
-                    <span class="partner">MINAGRI</span>
-                    <span class="partner">REAF</span>
-                    <span class="partner">NISR</span>
-                    <span class="partner">RAB</span>
+            <div class="footer-bottom">
+                <div class="footer-copyright">
+                    &copy; 2025 Rwanda Agriculture Digital Twin. All rights reserved.
+                </div>
+                <div class="footer-disclaimer">
+                    This tool is for policy simulation and planning purposes. 
+                    Results are based on statistical models and should be interpreted with appropriate context.
                 </div>
             </div>
-            
-            <div class="footer-section">
-                <h4>Technical Support</h4>
-                <p>For technical issues or data inquiries:</p>
-                <p class="contact-email">
-                    <i class="fas fa-envelope"></i>
-                    support@agritwin.gov.rw
-                </p>
-                <p class="contact-phone">
-                    <i class="fas fa-phone"></i>
-                    +250 788 123 456
-                </p>
-            </div>
         </div>
-        
-        <div class="footer-bottom">
-            <p>&copy; {{ now.year }} Rwanda Agriculture Digital Twin. All rights reserved.</p>
-            <p class="disclaimer">
-                This tool is for policy simulation and planning purposes. Results are based on statistical models 
-                and should be interpreted with appropriate context.
-            </p>
-        </div>
-    </div>
-</footer>
+    </footer>
+
 
 <style>
     .footer {
@@ -55,7 +93,7 @@
     
     .footer-content {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(4, 1fr);
         gap: var(--space-xl);
         margin-bottom: var(--space-xl);
     }
