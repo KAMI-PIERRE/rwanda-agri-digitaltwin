@@ -484,7 +484,7 @@
                 const topSubs = document.getElementById('subsistence-percent');
                 const topAdv = document.getElementById('advanced-percent');
                 if (topSubs) topSubs.textContent = Math.round(values.subsistence) + '%';
-                if (topAdv) topAdv.textContent = (values.advanced > 0 && values.advanced < 2.5 && path==='current') ? '<2.5%' : (values.advanced > 0 && values.advanced < 5 && path==='target' ? '<5%' : Math.round(values.advanced) + '%');
+                if (topAdv) topAdv.textContent = (values.advanced > 0 && values.advanced < 0.5 && path==='current') ? '<2.5%' : (values.advanced > 0 && values.advanced < 5 && path==='target' ? '<5%' : Math.round(values.advanced) + '%');
                 // update pathway fill bar width
                 const fill = document.getElementById('pathway-fill');
                 if (fill) {
@@ -495,7 +495,7 @@
             }
 
             const currentValues = { subsistence: 51, smallholder: 32, semi: 12, commercial: 4, advanced: 0.5 };
-            const targetValues = { subsistence: 80, smallholder: 56, semi: 41, commercial: 26, advanced: 5 };
+            const targetValues = { subsistence: 0, smallholder: 0, semi: 35, commercial: 45, advanced: 20 };
 
             document.querySelectorAll('.visual-controls .visual-btn').forEach(btn => {
                 btn.addEventListener('click', function(e){
