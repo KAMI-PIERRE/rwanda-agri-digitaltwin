@@ -114,7 +114,7 @@
                             <div class="stage" data-stage="advanced">
                                 <div class="stage-icon"><i class="fas fa-robot"></i></div>
                                 <div class="stage-name">Advanced</div>
-                                <div class="stage-range"><0.5%</div>
+                                <div class="stage-range">&lt;0.5%</div>
                             </div>
                         </div>
                     </div>
@@ -453,4 +453,59 @@
     <!-- JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/static/js/home.js"></script>
+    <script>
+        // Inline fallback for Transformation Pathway buttons to ensure they work
+        (function(){
+            function setValues(values, path){
+                const mapping = {
+                    subsistence: values.subsistence,
+                    smallholder: values.smallholder,
+                    semi: values.semi,
+                    commercial: values.commercial,
+                    advanced: values.advanced
+                };
+
+                Object.keys(mapping).forEach(k => {
+                    const el = document.querySelector(`.stage[data-stage="${k}"] .stage-range`);
+                    if (!el) return;
+                    const v = mapping[k];
+                    if (v === null) return;
+                    // display small advanced values nicely
+                    if (k === 'advanced' && v > 0 && v < 2.5) {
+                        el.textContent = '<2.5%';
+                    } else if (k === 'advanced' && path === 'target' && v > 0 && v < 5) {
+                        el.textContent = '<5%';
+                    } else {
+                        el.textContent = Math.round(v) + '%';
+                    }
+                });
+
+                // update top summary labels if present
+                const topSubs = document.getElementById('subsistence-percent');
+                const topAdv = document.getElementById('advanced-percent');
+                if (topSubs) topSubs.textContent = Math.round(values.subsistence) + '%';
+                if (topAdv) topAdv.textContent = (values.advanced > 0 && values.advanced < 2.5 && path==='current') ? '<2.5%' : (values.advanced > 0 && values.advanced < 5 && path==='target' ? '<5%' : Math.round(values.advanced) + '%');
+                // update pathway fill bar width
+                const fill = document.getElementById('pathway-fill');
+                if (fill) {
+                    const width = (path === 'target') ? '90%' : '48%';
+                    fill.style.transition = 'width 600ms ease';
+                    fill.style.width = width;
+                }
+            }
+
+            const currentValues = { subsistence: 51, smallholder: 32, semi: 12, commercial: 4, advanced: 0.5 };
+            const targetValues = { subsistence: 80, smallholder: 56, semi: 41, commercial: 26, advanced: 5 };
+
+            document.querySelectorAll('.visual-controls .visual-btn').forEach(btn => {
+                btn.addEventListener('click', function(e){
+                    document.querySelectorAll('.visual-controls .visual-btn').forEach(b=>b.classList.remove('active'));
+                    this.classList.add('active');
+                    const path = this.getAttribute('data-path');
+                    if (path === 'current') setValues(currentValues, 'current');
+                    else setValues(targetValues, 'target');
+                });
+            });
+        })();
+    </script>
 {% endblock %}

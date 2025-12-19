@@ -96,36 +96,64 @@ function setupPathwayVisualization() {
     
     const pathways = {
         current: {
+            // Current distribution (user-provided)
             subsistence: 51,
+            smallholder: 32,
+            semi: 12,
+            commercial: 4,
             advanced: 0.5,
             fillWidth: '48%'
         },
         target: {
-            subsistence:0,
+            // Example target distribution for 2050 (more development)
+            // These sum to 100 and reflect a large shift toward commercial/advanced
+            subsistence: 5,
+            smallholder: 25,
+            semi: 30,
+            commercial: 20,
             advanced: 20,
-            fillWidth: '40%'
+            fillWidth: '90%'
         }
     };
     
-    function updatePathway(path) {
+    function updatePathway(path, evt) {
+        console.log('[Pathway] updatePathway called for:', path);
         const data = pathways[path];
-        
-        // Animate fill width
+
+        // Update fill width immediately
         pathwayFill.style.width = data.fillWidth;
-        
-        // Animate percentages
-        animateCounter(subsPercent, data.subsistence, 1000);
-        animateCounter(advPercent, data.advanced, 1000);
-        
-        // Update button states
-        document.querySelectorAll('.visual-btn').forEach(btn => {
-            btn.classList.remove('active');
+
+        // Top summary labels: set directly to avoid animation timing issues
+        if (data.subsistence !== undefined) {
+            subsPercent.textContent = (data.subsistence > 0 && data.subsistence < 0.5) ? '<0.5%' : Math.round(data.subsistence) + '%';
+        }
+        if (data.advanced !== undefined) {
+            advPercent.textContent = (data.advanced > 0 && data.advanced < 0.5) ? '<0.5%' : Math.round(data.advanced) + '%';
+        }
+
+        // Update all stage labels
+        const stageKeys = ['subsistence', 'smallholder', 'semi', 'commercial', 'advanced'];
+        stageKeys.forEach(k => {
+            const el = document.querySelector(`.stage[data-stage="${k}"] .stage-range`);
+            if (!el) return;
+            const val = data[k];
+            if (val === undefined) return;
+            if (val > 0 && val < 0.5) {
+                el.textContent = '<0.5%';
+            } else if (Number.isInteger(val)) {
+                el.textContent = val + '%';
+            } else {
+                el.textContent = Math.round(val) + '%';
+            }
         });
-        event.target.classList.add('active');
+
+        // Update button states
+        document.querySelectorAll('.visual-btn').forEach(btn => btn.classList.remove('active'));
+        if (evt && evt.currentTarget) evt.currentTarget.classList.add('active');
     }
     
-    currentBtn.addEventListener('click', (e) => updatePathway('current'));
-    targetBtn.addEventListener('click', (e) => updatePathway('target'));
+    currentBtn.addEventListener('click', (e) => updatePathway('current', e));
+    targetBtn.addEventListener('click', (e) => updatePathway('target', e));
     
     // Hover effects on stages
     document.querySelectorAll('.stage').forEach(stage => {
