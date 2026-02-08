@@ -3,7 +3,6 @@
 Verify 45% baseline probability and distribution
 """
 import numpy as np
-
 class MonteCarloEngine:
     def __init__(self):
         self.base_year = 2025
@@ -53,11 +52,9 @@ class MonteCarloEngine:
         median_ppp = float(np.median(results_array))
         
         return probability, mean_ppp, median_ppp, results_array
-
 print("=" * 70)
 print("VERIFICATION: 45% BASELINE PROBABILITY WITH 5.5% BASE GROWTH")
 print("=" * 70)
-
 baseline_vector = np.zeros(20)
 engine = MonteCarloEngine()
 
@@ -69,7 +66,6 @@ print(f"   Median PPP: ${median_baseline:.0f}")
 print(f"   Distribution samples: {len(dist_baseline)}")
 print(f"   Expected: 45% ± 0.5%")
 print(f"   Status: {'✓ PASS' if 0.445 <= prob_baseline <= 0.455 else '✗ FAIL'}")
-
 # Test full implementation
 print("\n2. FULL IMPLEMENTATION (all interventions = 100%):")
 full_vector = np.ones(20)

@@ -86,6 +86,130 @@ class MonteCarloEngine:
             }
         }
 
+    def optimize_interventions(self, budget=60.0, n_iterations=500, n_simulations=1000):
+        """Simple random-search optimizer that respects a budget constraint.
+
+        Returns a dict with the best intervention vector found and associated stats.
+        """
+        best_probability = -1.0
+        best_vector = None
+        best_cost = 0.0
+        best_results = None
+
+        n_interventions = len(self.alpha)
+
+        for _ in range(int(n_iterations)):
+            # sample random intensities [0,1] and enforce budget
+            attempt = 0
+            while True:
+                vec = np.random.rand(n_interventions)
+                total_cost = float(np.dot(self.costs, vec))
+                attempt += 1
+                # if after many attempts we don't satisfy budget, scale down proportionally
+                if total_cost <= budget or attempt > 50:
+                    if total_cost > budget and total_cost > 0:
+                        vec = vec * (budget / total_cost)
+                        total_cost = float(np.dot(self.costs, vec))
+                    break
+
+            # evaluate
+            results = self.run_simulation(vec, n_simulations=int(n_simulations))
+            prob = results.get('probability', 0.0)
+
+            if prob > best_probability:
+                best_probability = prob
+                best_vector = vec.copy()
+                best_cost = total_cost
+                best_results = results
+
+        return {
+            'optimized_interventions': best_vector.tolist() if best_vector is not None else None,
+            'probability': float(best_probability),
+            'total_cost': float(best_cost),
+            'budget_utilization': float((best_cost / float(budget) * 100) if budget else 0.0),
+            'budget': float(budget),
+            'results': best_results
+        }
+
+    def plan_for_target(self, target_probability=0.78, budget=100.0, step=0.05, n_simulations=1000, baseline_vector=None):
+        """Greedy planner: incrementally allocate budget to the most cost-effective intervention
+
+        Parameters:
+        - target_probability: desired probability (0-1)
+        - budget: maximum budget to spend
+        - step: increment step per intervention (fraction of intensity, e.g., 0.05 = 5%)
+        - n_simulations: sims per evaluation
+        - baseline_vector: optional starting intervention vector (0-1). If None, uses zeros.
+
+        Returns a plan dict with recommended vector, cost, and achieved probability.
+        """
+        n = len(self.alpha)
+        if baseline_vector is None:
+            current = np.zeros(n)
+        else:
+            current = np.asarray(baseline_vector, dtype=float).copy()
+
+        # Ensure within bounds
+        current = np.clip(current, 0.0, 1.0)
+
+        costs = np.array(self.costs, dtype=float)
+        spent = float(np.dot(costs, current))
+
+        # Quick check
+        results = self.run_simulation(current, n_simulations=n_simulations)
+        prob = results.get('probability', 0.0)
+
+        # Greedy loop
+        while prob < float(target_probability) and spent < float(budget):
+            best_idx = None
+            best_score = 0.0
+            best_delta = 0.0
+
+            for i in range(n):
+                if current[i] >= 1.0 - 1e-6:
+                    continue
+                inc = min(step, 1.0 - current[i])
+                inc_cost = costs[i] * inc
+                if spent + inc_cost > budget:
+                    continue
+
+                trial = current.copy()
+                trial[i] += inc
+                trial = np.clip(trial, 0.0, 1.0)
+                trial_results = self.run_simulation(trial, n_simulations=max(200, int(n_simulations/5)))
+                trial_prob = trial_results.get('probability', 0.0)
+                marginal = trial_prob - prob
+                # cost-effectiveness score
+                score = marginal / (inc_cost + 1e-9)
+                if score > best_score:
+                    best_score = score
+                    best_idx = i
+                    best_delta = inc
+
+            if best_idx is None:
+                break
+
+            # Apply best increment
+            current[best_idx] += best_delta
+            current = np.clip(current, 0.0, 1.0)
+            spent = float(np.dot(costs, current))
+
+            # Re-evaluate with full sims for more reliable estimate
+            results = self.run_simulation(current, n_simulations=n_simulations)
+            prob = results.get('probability', 0.0)
+
+            # Safety: prevent infinite loops
+            if best_delta <= 0:
+                break
+
+        return {
+            'recommended_interventions': current.tolist(),
+            'total_cost': float(spent),
+            'achieved_probability': float(prob),
+            'target_probability': float(target_probability),
+            'results': results
+        }
+
 # Initialize engine
 mc_engine = MonteCarloEngine()
 
@@ -292,6 +416,53 @@ def model_params():
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/optimize', methods=['POST'])
+def optimize():
+    """API endpoint to run AI optimizer (budget-constrained random search)"""
+    try:
+        data = request.get_json() or {}
+        budget = float(data.get('budget', mc_engine.costs.sum() * 0.5 if hasattr(mc_engine, 'costs') else 60.0))
+        n_iterations = int(data.get('n_iterations', 500))
+        n_simulations = int(data.get('n_simulations', 1000))
+
+        # Optionally accept current_interventions to seed or compare
+        optimized = mc_engine.optimize_interventions(budget=budget, n_iterations=n_iterations, n_simulations=n_simulations)
+
+        return jsonify({'success': True, 'optimized': optimized})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/plan_to_target', methods=['POST'])
+def plan_to_target():
+    """API endpoint to produce a practical, cost-aware plan to reach a target probability."""
+    try:
+        data = request.get_json() or {}
+        target = float(data.get('target_probability', 0.78))
+        budget = float(data.get('budget', 100.0))
+        step = float(data.get('step', 0.05))
+        n_simulations = int(data.get('n_simulations', 1000))
+
+        # Accept optional current interventions dict (0-100 percentages)
+        current_dict = data.get('current_interventions')
+        baseline_vec = None
+        if current_dict:
+            # convert to vector matching app's ordering (INTERVENTIONS list)
+            vec = []
+            for name in INTERVENTIONS:
+                val = current_dict.get(name, DEFAULT_TARGETS.get(name, 50))
+                if name == 'Postharvest Loss (%)':
+                    val = 100 - val
+                vec.append(float(val) / 100.0)
+            baseline_vec = np.array(vec)
+
+        plan = mc_engine.plan_for_target(target_probability=target, budget=budget, step=step, n_simulations=n_simulations, baseline_vector=baseline_vec)
+
+        return jsonify({'success': True, 'plan': plan})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/static/<path:filename>')
 def static_files(filename):

@@ -58,6 +58,9 @@ class Dashboard {
     // Load interventions from the page
     loadInterventions() {
         const sliders = document.querySelectorAll('.intervention-slider');
+        // Record the page order of interventions to ensure client/server ordering matches
+        this.interventionOrder = [];
+
         sliders.forEach(slider => {
             const id = slider.id.replace('slider-', '');
             const name = slider.dataset.name;
@@ -66,6 +69,7 @@ class Dashboard {
             this.interventions[name] = value;
             // store index mapping for client-side estimator
             this.interventionIndex[name] = parseInt(id);
+            this.interventionOrder.push(name);
             
             // Update value display
             const valueDisplay = document.getElementById(`value-${id}`);
@@ -353,18 +357,27 @@ class Dashboard {
             
             // Store optimization results
             this.optimizationResults = data.optimized;
-            
-            // Update UI with optimization results
+
+            // Keep a snapshot of current interventions so the optimization panel can show deltas
+            this.preOptimizationInterventions = Object.assign({}, this.interventions);
+
+            // Auto-apply optimization recommendations to the intervention controls
+            try {
+                this.applyOptimizationRecommendations(data.optimized);
+            } catch (err) {
+                console.warn('Auto-apply optimization failed:', err);
+            }
+
+            // Update UI with optimization results (now that interventions were updated)
             this.updateOptimizationUI(data.optimized);
-            
-            // Show optimization results panel
-            document.getElementById('optimization-results').style.display = 'block';
-            
-            // Scroll to optimization results
-            document.getElementById('optimization-results').scrollIntoView({
-                behavior: 'smooth'
-            });
-            
+
+            // Show optimization results panel and scroll into view
+            const optPanel = document.getElementById('optimization-results');
+            if (optPanel) {
+                optPanel.style.display = 'block';
+                optPanel.scrollIntoView({ behavior: 'smooth' });
+            }
+
             // Show success notification
             Utils.showNotification('AI optimization completed!', 'success');
             
@@ -672,14 +685,17 @@ class Dashboard {
         
         container.innerHTML = '';
         
-        // Get intervention names (this should match backend order)
-        const interventionNames = Object.keys(this.interventions);
+        // Use recorded intervention order (populated on load) to match backend ordering
+        const interventionNames = this.interventionOrder || Object.keys(this.interventions);
         
         optimization.optimized_interventions.forEach((intensity, index) => {
             if (index >= interventionNames.length) return;
             
             const interventionName = interventionNames[index];
-            const currentValue = this.interventions[interventionName] || 0;
+            // Use pre-optimization snapshot to show the delta between previous and recommended
+            const currentValue = (this.preOptimizationInterventions && this.preOptimizationInterventions[interventionName] !== undefined)
+                ? this.preOptimizationInterventions[interventionName]
+                : (this.interventions[interventionName] || 0);
             const recommendedValue = Math.round(intensity * 100);
             const difference = recommendedValue - currentValue;
             
@@ -704,6 +720,38 @@ class Dashboard {
             
             container.appendChild(sliderDiv);
         });
+    }
+
+    // Apply optimization recommendations to sliders and trigger a fresh simulation
+    applyOptimizationRecommendations(optimization) {
+        try {
+            if (!optimization || !optimization.optimized_interventions) return;
+
+            optimization.optimized_interventions.forEach((intensity, index) => {
+                const name = (this.interventionOrder && this.interventionOrder[index]) || null;
+                if (!name) return;
+
+                const sliderId = this.interventionIndex[name];
+                const slider = document.getElementById(`slider-${sliderId}`);
+                const recommendedValue = Math.round(intensity * 100);
+
+                if (slider) {
+                    slider.value = recommendedValue;
+                    const valueDisplay = document.getElementById(`value-${sliderId}`);
+                    if (valueDisplay) valueDisplay.textContent = recommendedValue;
+                    // Update internal state
+                    this.interventions[name] = recommendedValue;
+                    // Update slider styling
+                    this._setSliderGradient(slider);
+                }
+            });
+
+            // Run simulation with applied recommendations
+            this.runSimulation();
+            Utils.showNotification('Applied AI optimization recommendations', 'success');
+        } catch (err) {
+            console.error('Failed to apply optimization recommendations:', err);
+        }
     }
     
     // Update sensitivity table
